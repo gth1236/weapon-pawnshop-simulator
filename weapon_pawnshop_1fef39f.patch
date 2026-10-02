@@ -1,0 +1,2575 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000000000000000000000000000000000000..34cc906d488ba45b8975a03f6030473d9f04f6db
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,3 @@
++__pycache__/
++*.py[cod]
++output/*.csv
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..cabe5f5c85e02adf5f98cbc029f3a8c8f41e9e65
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,116 @@
++# RPG Weapon Pawnshop Balance Simulator
++
++This Python-only debug simulator implements the generation and price rules in
++`rpg_weapon_pawnshop_core_system_spec_v0_2.txt`. It deliberately contains no
++Godot project or game client.
++
++## Run
++
++Python 3.10 or later is required; there are no third-party dependencies.
++
++```bash
++python simulator/main.py --count 10000 --seed 12345
++```
++
++The command prints distributions, price percentiles, up to 20 readable samples,
++and a 1,000-trial reputation projection at 10/25/30/50/60/100/120/200/240 completed trades,
++then writes every generated guest/weapon pair to
++`output/simulation_results.csv`. Use `--count` for any positive sample size,
++`--samples 0` to suppress examples, `--output` to change the CSV destination,
++and `output/progression_report.csv`. Use `--config` to load another balance file,
++`--progression-output` to move that report, or `--reputation-trials 0` to skip
++the reputation projection or another positive value to change its sample size.
++The same command runs 100 24-week economy trials by default. Use
++`--economy-trials`, `--economy-weeks`, `--starting-cash`, or
++`--economy-trials 0` to tune or disable this analysis.
++
++## Structure
++
++- `config/balance.json`: all probability, price, numeric-stat, and temporary
++  debug values. `metadata.temporary_values` identifies every unfinished group.
++- `simulator/models.py`: separate true weapon, player-known weapon, guest,
++  concrete stat-line, price, and result records.
++- `simulator/config.py`: config loading and probability-table validation.
++- `simulator/guest_generator.py`: independent uniform guest rolls and the
++  configurable temporary progression rolls.
++- `simulator/weapon_generator.py`: compatibility, weapon, tier, internal grade,
++  concrete numeric stat, processing, and stability generation.
++- `simulator/price_calculator.py`: pure spec price and asking-price formulas.
++- `simulator/buyer_fit.py`: buyer compatibility, fit components, interest bands,
++  and deterministic best-inventory selection.
++- `simulator/economy_simulation.py`: day/week visits, cash, inventory, market
++  revaluation, purchases, sales, Monte Carlo summaries, and economy CSV export.
++- `simulator/reputation_simulation.py`: fair-value purchase strategy and
++  reputation checkpoint Monte Carlo simulation.
++- `simulator/simulation.py`: seeded orchestration and CSV export.
++- `simulator/report.py`: distributions, percentiles, and readable examples.
++- `simulator/main.py`: command-line entry point.
++- `tests/test_simulator.py`: deterministic, validation, distribution, and price
++  floor checks.
++
++## Temporary/TODO balance assumptions
++
++The specification leaves several tables unfinished. Neutral debug defaults are
++isolated in config for kindness; reputation-to-level and power; trade-count-to-
++achievement and title; incompatible stat quality; special stats; amplification
++quality; reputation/trade-count progression anchors; foreign-raw quality;
++processing-load contributions; conditional stability; and concrete numeric
++display values. These are marked in `metadata.temporary_values`. Special-stat grades are generated
++for pricing, but no concrete special line is invented because the required
++tier/stat numeric ranges remain unspecified.
++
++The simulator treats one run as one weekly market snapshot: each class receives
++one independently uniform power and popularity state, reused for all records.
++This follows the weekly market rule rather than rerolling the market per guest.
++
++## Fair-value purchase strategy
++
++“Normal price” is defined as offering the hidden true appraised price. An offer
++at least as large as the asking price completes immediately; lower offers are
++treated as a refusal because detailed counteroffers remain TODO in the spec.
++Checkpoint counts refer to completed trades, while rejected visits still apply
++the specified no-purchase or failed-scam reputation effect. Reported mean and
++median values therefore include the visits required to reach each checkpoint.
++
++Positive reputation deltas use the multiplier selected from the current
++reputation before that delta is applied. Negative and zero deltas are never
++decayed. Reputation remains a float internally; console output rounds to two
++decimal places and CSV output retains the numeric value. The temporary decay
++bands are stored under `reputation.positive_decay`.
++
++Customer progression linearly interpolates editable config anchors. Reputation
++controls kindness, level bracket, and power, while completed trade count
++independently controls title and achievement. Every anchor retains non-zero
++probability for low-end categories. Class, tendency, knowledge, and purpose
++remain independent uniform rolls.
++
++Stability is no longer rolled independently. Reinforcement, refining level, and
++amplification category produce a temporary `processing_load`; the matching
++`stability_by_processing_load` probability table then generates stability. Both
++the load contributions and conditional tables are explicitly temporary config.
++Market popularity and class power add pressure to the base processing load using
++the weapon's `item_class`, never the carrying guest's class.
++
++Incompatible weapons are split by temporary config into 90% `FOREIGN_RAW` and
++10% `FOREIGN_WORKED`. Raw foreign items use separate stat/unique tables and are
++always `UNENHANCED`, refining `0`, and `UNAPPLIED`; worked foreign items reuse
++the normal guest-driven processing rules. `UNENHANCED` has the requested +0.10
++reinforcement value. `OWN_CLASS`, `FOREIGN_RAW`, and `FOREIGN_WORKED` summaries
++are printed and `generation_mode`, `item_class`, base load, market loads, and
++effective load are exported to the item CSV.
++
++## Temporary economy loop
++
++The first four visitors sell to the shop; later roles use the configurable
++50/50 seller/buyer table. A balanced automated policy accepts seller asking
++prices at or below appraisal when cash permits. Inventory is reappraised against
++the current weekly market. Buyers consider only matching `item_class` inventory,
++choose the highest fit item, and make at most one fit/knowledge-adjusted offer.
++The shop lists at current appraisal plus 20% and accepts no less than current
++appraisal or purchase cost plus 5%. These price, interest, haggle, reputation,
++starting-cash, and visit-rate values are explicitly temporary config.
++
++Economy output includes `economy_weekly_report.csv`, a first-trial
++`economy_transactions.csv`, and `inventory_snapshot.csv`. The model intentionally
++does **not** include buyer affordability/budget, operating expenses, taxes,
++loans, or interactive negotiation; buyer affordability/budget is still TODO.
+diff --git a/config/balance.json b/config/balance.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..15f84cae3a56f2e07b5db994d0ba7c3ed7af6c34
+--- /dev/null
++++ b/config/balance.json
+@@ -0,0 +1,1159 @@
++{
++  "metadata": {
++    "authoritative_spec": "rpg_weapon_pawnshop_core_system_spec_v0_2.txt",
++    "temporary_values": [
++      "weapon.special_stat_weights",
++      "weapon.amplification_quality_weights",
++      "weapon.processing_load",
++      "weapon.stability_by_processing_load",
++      "numeric_stats.*",
++      "progression.reputation.*",
++      "progression.trade_count.*",
++      "reputation.positive_decay",
++      "weapon.foreign_mode_weights",
++      "weapon.foreign_raw_*",
++      "weapon.market_processing_load",
++      "economy.visitor_roles",
++      "economy.buyer_fit",
++      "economy.interest_bands",
++      "economy.pricing",
++      "economy.starting_cash",
++      "economy.daily_visitors",
++      "economy.sale_reputation"
++    ]
++  },
++  "guest": {
++    "classes": [
++      "WARRIOR",
++      "MAGE",
++      "ROGUE",
++      "ARCHER",
++      "GUNNER",
++      "CLERIC"
++    ],
++    "tendencies": [
++      "VERY_CARELESS",
++      "SLIGHTLY_CARELESS",
++      "SLIGHTLY_CAUTIOUS",
++      "VERY_CAUTIOUS"
++    ],
++    "knowledge": [
++      "NONE",
++      "SOME",
++      "HIGH"
++    ],
++    "purposes": [
++      "EMERGENCY_CASH",
++      "UPGRADE_PURCHASE",
++      "GREEDY_SELLING"
++    ],
++    "tier_by_level": {
++      "1-10": {
++        "1": 0.8,
++        "2": 0.2
++      },
++      "11-30": {
++        "1": 0.6,
++        "2": 0.3,
++        "3": 0.1
++      },
++      "31-50": {
++        "1": 0.2,
++        "2": 0.4,
++        "3": 0.4
++      },
++      "51-70": {
++        "2": 0.2,
++        "3": 0.4,
++        "4": 0.4
++      },
++      "71-90": {
++        "3": 0.3,
++        "4": 0.5,
++        "5": 0.2
++      },
++      "91-120": {
++        "4": 0.6,
++        "5": 0.4
++      }
++    },
++    "stat_grade_by_power": {
++      "VERY_LOW": {
++        "NONE": 0.3,
++        "MIXED": 0.5,
++        "ADEQUATE": 0.2,
++        "EXCELLENT": 0.0
++      },
++      "LOW": {
++        "NONE": 0.1,
++        "MIXED": 0.4,
++        "ADEQUATE": 0.4,
++        "EXCELLENT": 0.1
++      },
++      "NORMAL": {
++        "NONE": 0.0,
++        "MIXED": 0.3,
++        "ADEQUATE": 0.5,
++        "EXCELLENT": 0.2
++      },
++      "HIGH": {
++        "NONE": 0.0,
++        "MIXED": 0.1,
++        "ADEQUATE": 0.4,
++        "EXCELLENT": 0.5
++      },
++      "VERY_HIGH": {
++        "NONE": 0.0,
++        "MIXED": 0.0,
++        "ADEQUATE": 0.2,
++        "EXCELLENT": 0.8
++      }
++    },
++    "unique_by_tendency": {
++      "VERY_CARELESS": {
++        "NONE": 0.6,
++        "LOW": 0.4,
++        "HIGH": 0.0
++      },
++      "SLIGHTLY_CARELESS": {
++        "NONE": 0.4,
++        "LOW": 0.4,
++        "HIGH": 0.2
++      },
++      "SLIGHTLY_CAUTIOUS": {
++        "NONE": 0.2,
++        "LOW": 0.4,
++        "HIGH": 0.4
++      },
++      "VERY_CAUTIOUS": {
++        "NONE": 0.0,
++        "LOW": 0.4,
++        "HIGH": 0.6
++      }
++    },
++    "reinforce_by_tendency": {
++      "VERY_CARELESS": {
++        "PERFECT": 0.1,
++        "GOOD": 0.3,
++        "MIXED": 0.4,
++        "BAD": 0.2
++      },
++      "SLIGHTLY_CARELESS": {
++        "PERFECT": 0.2,
++        "GOOD": 0.4,
++        "MIXED": 0.3,
++        "BAD": 0.1
++      },
++      "SLIGHTLY_CAUTIOUS": {
++        "PERFECT": 0.3,
++        "GOOD": 0.5,
++        "MIXED": 0.2,
++        "BAD": 0.0
++      },
++      "VERY_CAUTIOUS": {
++        "PERFECT": 0.6,
++        "GOOD": 0.4,
++        "MIXED": 0.0,
++        "BAD": 0.0
++      }
++    },
++    "refining_band_by_achievement": {
++      "NONE": {
++        "1-4": 0.8,
++        "5-7": 0.2,
++        "8-10": 0.0
++      },
++      "SOME": {
++        "1-4": 0.6,
++        "5-7": 0.35,
++        "8-10": 0.05
++      },
++      "GOOD": {
++        "1-4": 0.4,
++        "5-7": 0.5,
++        "8-10": 0.1
++      },
++      "VERY_GOOD": {
++        "1-4": 0.3,
++        "5-7": 0.5,
++        "8-10": 0.2
++      }
++    },
++    "amplification_count_by_title": {
++      "NONE": {
++        "UNAPPLIED": 0.4,
++        "ZERO_LINE": 0.4,
++        "ONE_LINE": 0.2,
++        "TWO_LINE": 0.0,
++        "THREE_LINE": 0.0
++      },
++      "C": {
++        "UNAPPLIED": 0.2,
++        "ZERO_LINE": 0.4,
++        "ONE_LINE": 0.3,
++        "TWO_LINE": 0.1,
++        "THREE_LINE": 0.0
++      },
++      "B": {
++        "UNAPPLIED": 0.2,
++        "ZERO_LINE": 0.1,
++        "ONE_LINE": 0.4,
++        "TWO_LINE": 0.2,
++        "THREE_LINE": 0.1
++      },
++      "A": {
++        "UNAPPLIED": 0.1,
++        "ZERO_LINE": 0.0,
++        "ONE_LINE": 0.3,
++        "TWO_LINE": 0.4,
++        "THREE_LINE": 0.2
++      },
++      "S": {
++        "UNAPPLIED": 0.0,
++        "ZERO_LINE": 0.0,
++        "ONE_LINE": 0.0,
++        "TWO_LINE": 0.4,
++        "THREE_LINE": 0.6
++      }
++    }
++  },
++  "weapon": {
++    "compatibility_weights": {
++      "compatible": 0.8,
++      "incompatible": 0.2
++    },
++    "class_weapon_pools": {
++      "WARRIOR": [
++        "one_handed_sword",
++        "greatsword",
++        "spear",
++        "axe"
++      ],
++      "MAGE": [
++        "staff",
++        "wand",
++        "grimoire"
++      ],
++      "ROGUE": [
++        "dagger",
++        "throwing_weapon"
++      ],
++      "ARCHER": [
++        "bow",
++        "crossbow"
++      ],
++      "GUNNER": [
++        "gun",
++        "heavy_weapon"
++      ],
++      "CLERIC": [
++        "staff",
++        "gauntlet",
++        "mace"
++      ]
++    },
++    "special_stat_weights": {
++      "HIGH_RELEVANT": 0.2,
++      "RELEVANT": 0.4,
++      "NONE_RELEVANT": 0.4
++    },
++    "amplification_quality_weights": {
++      "LOW": 0.5,
++      "HIGH": 0.5
++    },
++    "processing_load": {
++      "reinforcement": {
++        "PERFECT": 3,
++        "GOOD": 2,
++        "MIXED": 1,
++        "BAD": 0,
++        "UNENHANCED": 0
++      },
++      "refining_level_multiplier": 1,
++      "amplification": {
++        "UNAPPLIED": 0,
++        "ZERO_LINE": 1,
++        "ONE_LINE": 2,
++        "TWO_LINE": 3,
++        "THREE_LINE": 4
++      }
++    },
++    "stability_by_processing_load": {
++      "0-4": {
++        "0-19": 0.0,
++        "20-39": 0.0,
++        "40-59": 0.05,
++        "60-79": 0.15,
++        "80-99": 0.4,
++        "100-100": 0.4
++      },
++      "5-8": {
++        "0-19": 0.0,
++        "20-39": 0.05,
++        "40-59": 0.15,
++        "60-79": 0.4,
++        "80-99": 0.3,
++        "100-100": 0.1
++      },
++      "9-12": {
++        "0-19": 0.05,
++        "20-39": 0.15,
++        "40-59": 0.35,
++        "60-79": 0.3,
++        "80-99": 0.15,
++        "100-100": 0.0
++      },
++      "13-17": {
++        "0-19": 0.2,
++        "20-39": 0.35,
++        "40-59": 0.3,
++        "60-79": 0.15,
++        "80-99": 0.0,
++        "100-100": 0.0
++      },
++      "18-20": {
++        "0-19": 0.35,
++        "20-39": 0.4,
++        "40-59": 0.2,
++        "60-79": 0.05,
++        "80-99": 0,
++        "100-100": 0
++      }
++    },
++    "foreign_mode_weights": {
++      "FOREIGN_RAW": 0.9,
++      "FOREIGN_WORKED": 0.1
++    },
++    "foreign_raw_normal_stat_weights": {
++      "NONE": 0.1,
++      "MIXED": 0.4,
++      "ADEQUATE": 0.4,
++      "EXCELLENT": 0.1
++    },
++    "foreign_raw_high_stat_weights": {
++      "NONE": 0.15,
++      "LOW": 0.4,
++      "ADEQUATE": 0.35,
++      "EXCELLENT": 0.1
++    },
++    "foreign_raw_unique_weights": {
++      "NONE": 0.8,
++      "LOW": 0.18,
++      "HIGH": 0.02
++    },
++    "market_processing_load": {
++      "class_popularity": {
++        "POPULAR": 2,
++        "NORMAL": 1,
++        "UNPOPULAR": 0
++      },
++      "class_power": {
++        "STRONG": 1,
++        "NORMAL": 0,
++        "WEAK": 0
++      }
++    }
++  },
++  "numeric_stats": {
++    "temporary": true,
++    "class_profiles": {
++      "WARRIOR": [
++        "strength",
++        "attack"
++      ],
++      "MAGE": [
++        "intelligence",
++        "magic_power"
++      ],
++      "ROGUE": [
++        "luck",
++        "attack"
++      ],
++      "ARCHER": [
++        "dexterity",
++        "attack"
++      ],
++      "GUNNER": [
++        "dexterity",
++        "attack"
++      ],
++      "CLERIC": [
++        "divine_power",
++        "magic_power"
++      ]
++    },
++    "normal_reference": {
++      "1": 10,
++      "2": 18,
++      "3": 30,
++      "4": 48,
++      "5": 72
++    },
++    "high_reference": {
++      "1": 12,
++      "2": 22,
++      "3": 38,
++      "4": 60,
++      "5": 90
++    },
++    "normal_ranges": {
++      "MIXED": [
++        0.35,
++        0.55
++      ],
++      "ADEQUATE": [
++        0.7,
++        0.9
++      ],
++      "EXCELLENT": [
++        1.0,
++        1.2
++      ]
++    },
++    "high_ranges": {
++      "LOW": [
++        0.35,
++        0.55
++      ],
++      "ADEQUATE": [
++        0.7,
++        0.9
++      ],
++      "EXCELLENT": [
++        1.0,
++        1.2
++      ]
++    },
++    "normal_stat_ids": [
++      "strength",
++      "dexterity",
++      "luck",
++      "intelligence",
++      "divine_power"
++    ],
++    "unique_ranges": {
++      "critical_chance": {
++        "LOW": [
++          2.0,
++          5.0
++        ],
++        "HIGH": [
++          6.0,
++          10.0
++        ]
++      },
++      "critical_damage": {
++        "LOW": [
++          5.0,
++          12.0
++        ],
++        "HIGH": [
++          13.0,
++          25.0
++        ]
++      },
++      "armor_penetration": {
++        "LOW": [
++          3.0,
++          8.0
++        ],
++        "HIGH": [
++          9.0,
++          18.0
++        ]
++      },
++      "element_damage": {
++        "LOW": [
++          4.0,
++          10.0
++        ],
++        "HIGH": [
++          11.0,
++          22.0
++        ]
++      }
++    },
++    "none_high_opposite_chance": 0.5,
++    "irrelevant_high_range": [
++      0.35,
++      0.55
++    ],
++    "amplification_ranges": {
++      "LOW": [
++        0.1,
++        0.2
++      ],
++      "HIGH": [
++        0.2,
++        0.35
++      ]
++    }
++  },
++  "reputation": {
++    "satisfaction_thresholds": {
++      "EMERGENCY_CASH": [
++        {
++          "max": 0.4,
++          "inclusive": false,
++          "result": "DISSATISFIED"
++        },
++        {
++          "max": 0.5,
++          "inclusive": true,
++          "result": "SATISFIED"
++        },
++        {
++          "max": null,
++          "inclusive": true,
++          "result": "VERY_SATISFIED"
++        }
++      ],
++      "UPGRADE_PURCHASE": [
++        {
++          "max": 0.5,
++          "inclusive": false,
++          "result": "HUMILIATED"
++        },
++        {
++          "max": 0.6,
++          "inclusive": true,
++          "result": "DISSATISFIED"
++        },
++        {
++          "max": 0.8,
++          "inclusive": true,
++          "result": "SATISFIED"
++        },
++        {
++          "max": null,
++          "inclusive": true,
++          "result": "VERY_SATISFIED"
++        }
++      ],
++      "GREEDY_SELLING": [
++        {
++          "max": 0.7,
++          "inclusive": false,
++          "result": "HUMILIATED"
++        },
++        {
++          "max": 0.8,
++          "inclusive": true,
++          "result": "DISSATISFIED"
++        },
++        {
++          "max": 1.0,
++          "inclusive": true,
++          "result": "SATISFIED"
++        },
++        {
++          "max": null,
++          "inclusive": true,
++          "result": "VERY_SATISFIED"
++        }
++      ]
++    },
++    "satisfaction_deltas": {
++      "VERY_SATISFIED": 6,
++      "SATISFIED": 2,
++      "DISSATISFIED": -4,
++      "HUMILIATED": -8
++    },
++    "kindness_deltas": {
++      "GENEROUS": 2,
++      "NORMAL": 0,
++      "ARGUMENTATIVE": 0,
++      "RUDE": -2
++    },
++    "no_purchase_deltas": {
++      "0": 0.5,
++      "-2": 0.5
++    },
++    "failed_scam_delta": -5,
++    "non_humiliating_kindness": [
++      "GENEROUS",
++      "NORMAL"
++    ],
++    "positive_decay": {
++      "temporary": true,
++      "ranges": [
++        {
++          "minimum": 0,
++          "maximum": 99,
++          "multiplier": 1.0
++        },
++        {
++          "minimum": 100,
++          "maximum": 249,
++          "multiplier": 0.75
++        },
++        {
++          "minimum": 250,
++          "maximum": 499,
++          "multiplier": 0.5
++        },
++        {
++          "minimum": 500,
++          "maximum": 799,
++          "multiplier": 0.35
++        },
++        {
++          "minimum": 800,
++          "maximum": null,
++          "multiplier": 0.2
++        }
++      ],
++      "precision_policy": "FLOAT_INTERNAL_ROUND_DISPLAY_2"
++    }
++  },
++  "price": {
++    "base_prices": {
++      "1": 1000,
++      "2": 2000,
++      "3": 5000,
++      "4": 15000,
++      "5": 35000
++    },
++    "normal_values": {
++      "EXCELLENT": 0.5,
++      "ADEQUATE": 0.2,
++      "MIXED": 0.05,
++      "NONE": -0.5
++    },
++    "normal_coefficients": {
++      "EXCELLENT": 1.1,
++      "ADEQUATE": 0.8,
++      "MIXED": 0.5,
++      "NONE": 0.3
++    },
++    "high_values": {
++      "EXCELLENT": 1.0,
++      "ADEQUATE": 0.4,
++      "LOW": 0.1,
++      "NONE": -0.8
++    },
++    "high_coefficients": {
++      "EXCELLENT": 1.3,
++      "ADEQUATE": 0.9,
++      "LOW": 0.55,
++      "NONE": 0.2
++    },
++    "special_values": {
++      "HIGH_RELEVANT": 0.3,
++      "RELEVANT": 0.1,
++      "NONE_RELEVANT": -0.1
++    },
++    "unique_values": {
++      "HIGH": 0.5,
++      "LOW": 0.3,
++      "NONE": 0.0
++    },
++    "reinforce_values": {
++      "PERFECT": 0.8,
++      "GOOD": 0.4,
++      "MIXED": -0.2,
++      "BAD": -0.5,
++      "UNENHANCED": 0.1
++    },
++    "refining_values": {
++      "0": 0.0,
++      "1": 0.05,
++      "2": 0.1,
++      "3": 0.15,
++      "4": 0.25,
++      "5": 0.5,
++      "6": 0.8,
++      "7": 1.1,
++      "8": 1.5,
++      "9": 2.0,
++      "10": 3.0
++    },
++    "amplification_values": {
++      "UNAPPLIED": 0.2,
++      "ZERO_LINE": -0.5,
++      "ONE_LINE_LOW": -0.4,
++      "ONE_LINE_HIGH": -0.2,
++      "TWO_LINE_LOW": 0.0,
++      "TWO_LINE_HIGH": 0.2,
++      "THREE_LINE_LOW": 0.4,
++      "THREE_LINE_HIGH": 1.0
++    },
++    "market_power_values": {
++      "STRONG": 0.15,
++      "NORMAL": 0.05,
++      "WEAK": -0.1
++    },
++    "market_popularity_values": {
++      "POPULAR": 0.2,
++      "NORMAL": 0.05,
++      "UNPOPULAR": -0.2
++    },
++    "stability_multipliers": {
++      "below_2": {
++        "100": 1.5,
++        "80": 1.3,
++        "60": 1.0,
++        "40": 0.8,
++        "20": 0.6,
++        "0": 0.4
++      },
++      "at_least_2": {
++        "100": 2.0,
++        "80": 1.6,
++        "60": 1.2,
++        "40": 1.0,
++        "20": 0.9,
++        "0": 0.6
++      }
++    },
++    "purpose_multipliers": {
++      "EMERGENCY_CASH": 0.5,
++      "UPGRADE_PURCHASE": 0.8,
++      "GREEDY_SELLING": 1.0
++    },
++    "knowledge_multipliers": {
++      "NONE": 1.0,
++      "SOME": 1.1,
++      "HIGH": 1.2
++    },
++    "scammer_minimum_multiplier": 1.5,
++    "minimum_price_ratio": 0.1
++  },
++  "progression": {
++    "temporary": true,
++    "reputation": {
++      "guest_kindness": {
++        "anchors": [
++          {
++            "value": 0,
++            "weights": {
++              "GENEROUS": 0.05,
++              "NORMAL": 0.45,
++              "ARGUMENTATIVE": 0.2,
++              "RUDE": 0.2,
++              "SCAMMER": 0.1
++            }
++          },
++          {
++            "value": 100,
++            "weights": {
++              "GENEROUS": 0.08,
++              "NORMAL": 0.5,
++              "ARGUMENTATIVE": 0.17,
++              "RUDE": 0.16,
++              "SCAMMER": 0.09
++            }
++          },
++          {
++            "value": 250,
++            "weights": {
++              "GENEROUS": 0.12,
++              "NORMAL": 0.54,
++              "ARGUMENTATIVE": 0.14,
++              "RUDE": 0.12,
++              "SCAMMER": 0.08
++            }
++          },
++          {
++            "value": 500,
++            "weights": {
++              "GENEROUS": 0.18,
++              "NORMAL": 0.55,
++              "ARGUMENTATIVE": 0.11,
++              "RUDE": 0.09,
++              "SCAMMER": 0.07
++            }
++          },
++          {
++            "value": 800,
++            "weights": {
++              "GENEROUS": 0.25,
++              "NORMAL": 0.55,
++              "ARGUMENTATIVE": 0.08,
++              "RUDE": 0.07,
++              "SCAMMER": 0.05
++            }
++          }
++        ]
++      },
++      "guest_level": {
++        "anchors": [
++          {
++            "value": 0,
++            "weights": {
++              "1-10": 0.35,
++              "11-30": 0.3,
++              "31-50": 0.18,
++              "51-70": 0.1,
++              "71-90": 0.05,
++              "91-120": 0.02
++            }
++          },
++          {
++            "value": 100,
++            "weights": {
++              "1-10": 0.28,
++              "11-30": 0.28,
++              "31-50": 0.21,
++              "51-70": 0.13,
++              "71-90": 0.07,
++              "91-120": 0.03
++            }
++          },
++          {
++            "value": 250,
++            "weights": {
++              "1-10": 0.2,
++              "11-30": 0.24,
++              "31-50": 0.23,
++              "51-70": 0.17,
++              "71-90": 0.1,
++              "91-120": 0.06
++            }
++          },
++          {
++            "value": 500,
++            "weights": {
++              "1-10": 0.13,
++              "11-30": 0.19,
++              "31-50": 0.23,
++              "51-70": 0.21,
++              "71-90": 0.15,
++              "91-120": 0.09
++            }
++          },
++          {
++            "value": 800,
++            "weights": {
++              "1-10": 0.08,
++              "11-30": 0.14,
++              "31-50": 0.2,
++              "51-70": 0.24,
++              "71-90": 0.2,
++              "91-120": 0.14
++            }
++          }
++        ]
++      },
++      "guest_power": {
++        "anchors": [
++          {
++            "value": 0,
++            "weights": {
++              "VERY_LOW": 0.3,
++              "LOW": 0.3,
++              "NORMAL": 0.25,
++              "HIGH": 0.1,
++              "VERY_HIGH": 0.05
++            }
++          },
++          {
++            "value": 100,
++            "weights": {
++              "VERY_LOW": 0.25,
++              "LOW": 0.28,
++              "NORMAL": 0.28,
++              "HIGH": 0.13,
++              "VERY_HIGH": 0.06
++            }
++          },
++          {
++            "value": 250,
++            "weights": {
++              "VERY_LOW": 0.18,
++              "LOW": 0.24,
++              "NORMAL": 0.3,
++              "HIGH": 0.19,
++              "VERY_HIGH": 0.09
++            }
++          },
++          {
++            "value": 500,
++            "weights": {
++              "VERY_LOW": 0.12,
++              "LOW": 0.19,
++              "NORMAL": 0.3,
++              "HIGH": 0.25,
++              "VERY_HIGH": 0.14
++            }
++          },
++          {
++            "value": 800,
++            "weights": {
++              "VERY_LOW": 0.07,
++              "LOW": 0.13,
++              "NORMAL": 0.27,
++              "HIGH": 0.31,
++              "VERY_HIGH": 0.22
++            }
++          }
++        ]
++      }
++    },
++    "trade_count": {
++      "guest_title": {
++        "anchors": [
++          {
++            "value": 0,
++            "weights": {
++              "NONE": 0.55,
++              "C": 0.25,
++              "B": 0.12,
++              "A": 0.06,
++              "S": 0.02
++            }
++          },
++          {
++            "value": 25,
++            "weights": {
++              "NONE": 0.45,
++              "C": 0.28,
++              "B": 0.16,
++              "A": 0.08,
++              "S": 0.03
++            }
++          },
++          {
++            "value": 50,
++            "weights": {
++              "NONE": 0.36,
++              "C": 0.29,
++              "B": 0.2,
++              "A": 0.11,
++              "S": 0.04
++            }
++          },
++          {
++            "value": 100,
++            "weights": {
++              "NONE": 0.25,
++              "C": 0.27,
++              "B": 0.25,
++              "A": 0.17,
++              "S": 0.06
++            }
++          },
++          {
++            "value": 200,
++            "weights": {
++              "NONE": 0.15,
++              "C": 0.22,
++              "B": 0.28,
++              "A": 0.24,
++              "S": 0.11
++            }
++          },
++          {
++            "value": 400,
++            "weights": {
++              "NONE": 0.08,
++              "C": 0.15,
++              "B": 0.27,
++              "A": 0.31,
++              "S": 0.19
++            }
++          }
++        ]
++      },
++      "guest_achievement": {
++        "anchors": [
++          {
++            "value": 0,
++            "weights": {
++              "NONE": 0.5,
++              "SOME": 0.3,
++              "GOOD": 0.15,
++              "VERY_GOOD": 0.05
++            }
++          },
++          {
++            "value": 25,
++            "weights": {
++              "NONE": 0.42,
++              "SOME": 0.32,
++              "GOOD": 0.19,
++              "VERY_GOOD": 0.07
++            }
++          },
++          {
++            "value": 50,
++            "weights": {
++              "NONE": 0.34,
++              "SOME": 0.33,
++              "GOOD": 0.24,
++              "VERY_GOOD": 0.09
++            }
++          },
++          {
++            "value": 100,
++            "weights": {
++              "NONE": 0.24,
++              "SOME": 0.31,
++              "GOOD": 0.31,
++              "VERY_GOOD": 0.14
++            }
++          },
++          {
++            "value": 200,
++            "weights": {
++              "NONE": 0.14,
++              "SOME": 0.26,
++              "GOOD": 0.38,
++              "VERY_GOOD": 0.22
++            }
++          },
++          {
++            "value": 400,
++            "weights": {
++              "NONE": 0.08,
++              "SOME": 0.18,
++              "GOOD": 0.41,
++              "VERY_GOOD": 0.33
++            }
++          }
++        ]
++      }
++    }
++  },
++  "analysis": {
++    "successful_trade_reference_per_week": 30,
++    "reputation_checkpoints": [
++      10,
++      25,
++      30,
++      50,
++      60,
++      100,
++      120,
++      200,
++      240
++    ],
++    "progression_distribution_checkpoints": [
++      30,
++      60,
++      120,
++      240
++    ]
++  },
++  "economy": {
++    "starting_cash": 100000,
++    "weeks": 24,
++    "daily_visitors": {
++      "minimum": 6,
++      "maximum": 8
++    },
++    "forced_initial_seller_visits": 4,
++    "visitor_roles": {
++      "SELL_TO_SHOP": 0.5,
++      "BUY_FROM_SHOP": 0.5
++    },
++    "checkpoints": [
++      1,
++      2,
++      4,
++      8,
++      12,
++      16,
++      20,
++      24
++    ],
++    "buyer_fit": {
++      "weights": {
++        "tier": 30,
++        "weapon_preference": 20,
++        "normal_stat": 13,
++        "high_stat": 11,
++        "reinforcement": 10,
++        "refining": 7,
++        "amplification": 5,
++        "unique_stat": 4
++      },
++      "non_preferred_weapon_fit": 0.7,
++      "quality_order": {
++        "normal_stat": [
++          "NONE",
++          "MIXED",
++          "ADEQUATE",
++          "EXCELLENT"
++        ],
++        "high_stat": [
++          "NONE",
++          "LOW",
++          "ADEQUATE",
++          "EXCELLENT"
++        ],
++        "reinforcement": [
++          "BAD",
++          "MIXED",
++          "UNENHANCED",
++          "GOOD",
++          "PERFECT"
++        ],
++        "unique_stat": [
++          "NONE",
++          "LOW",
++          "HIGH"
++        ],
++        "amplification": [
++          "ZERO_LINE",
++          "UNAPPLIED",
++          "ONE_LINE_LOW",
++          "ONE_LINE_HIGH",
++          "TWO_LINE_LOW",
++          "TWO_LINE_HIGH",
++          "THREE_LINE_LOW",
++          "THREE_LINE_HIGH"
++        ]
++      },
++      "refining_zero_probability": 0.05
++    },
++    "interest_bands": [
++      {
++        "name": "VERY_HIGH_INTEREST",
++        "minimum": 85,
++        "haggles": 0,
++        "price_multiplier": 1.2,
++        "desired_discount": 0
++      },
++      {
++        "name": "HIGH_INTEREST",
++        "minimum": 70,
++        "haggles": 1,
++        "price_multiplier": 1.1,
++        "desired_discount": 0.05
++      },
++      {
++        "name": "MEDIUM_INTEREST",
++        "minimum": 55,
++        "haggles": 2,
++        "price_multiplier": 1.05,
++        "desired_discount": 0.1
++      },
++      {
++        "name": "LOW_INTEREST",
++        "minimum": 40,
++        "haggles": 3,
++        "price_multiplier": 1.0,
++        "desired_discount": 0.15
++      }
++    ],
++    "knowledge_price_adjustment": {
++      "NONE": 0.05,
++      "SOME": 0,
++      "HIGH": -0.05
++    },
++    "listing_markup": 0.2,
++    "minimum_profit_over_cost": 0.05,
++    "sale_reputation_by_haggles": {
++      "0": 2,
++      "1": 1,
++      "2": 0,
++      "3": -1
++    },
++    "long_inventory_days": [
++      30,
++      60,
++      90
++    ]
++  }
++}
+diff --git a/simulator/__init__.py b/simulator/__init__.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..927fdcc3ca485ee8e3e4045e64efda38a514d69c
+--- /dev/null
++++ b/simulator/__init__.py
+@@ -0,0 +1 @@
++"""RPG Weapon Pawnshop balance simulator."""
+diff --git a/simulator/buyer_fit.py b/simulator/buyer_fit.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..c25d49727b50362bc2d91e07d3c11e6285920827
+--- /dev/null
++++ b/simulator/buyer_fit.py
+@@ -0,0 +1,81 @@
++"""Temporary, config-driven buyer-to-inventory fit model."""
++from dataclasses import dataclass
++
++
++@dataclass(frozen=True)
++class BuyerFit:
++    score: float
++    components: dict[str, float]
++    tier_fit: float
++    preference_match: bool
++
++
++def cumulative_quality_fit(value, probabilities, order):
++    index = order.index(value)
++    return max(0.0, min(1.0, sum(probabilities.get(name, 0.0) for name in order[:index + 1])))
++
++
++def _level_bracket(config, level):
++    return next(name for name in config["guest"]["tier_by_level"] if int(name.split("-")[0]) <= level <= int(name.split("-")[1]))
++
++
++def _refining_probabilities(config, achievement):
++    zero = config["economy"]["buyer_fit"]["refining_zero_probability"]
++    exact = {level: 0.0 for level in range(11)}; exact[0] = zero
++    for band, probability in config["guest"]["refining_band_by_achievement"][achievement].items():
++        low, high = map(int, band.split("-"))
++        for level in range(low, high + 1):
++            exact[level] += (1 - zero) * probability / (high - low + 1)
++    return exact
++
++
++def _amplification_probabilities(config, title):
++    count = config["guest"]["amplification_count_by_title"][title]
++    quality = config["weapon"]["amplification_quality_weights"]
++    result = {name: 0.0 for name in config["economy"]["buyer_fit"]["quality_order"]["amplification"]}
++    result["UNAPPLIED"], result["ZERO_LINE"] = count["UNAPPLIED"], count["ZERO_LINE"]
++    for prefix in ("ONE_LINE", "TWO_LINE", "THREE_LINE"):
++        for grade in ("LOW", "HIGH"):
++            result[f"{prefix}_{grade}"] = count[prefix] * quality[grade]
++    return result
++
++
++def calculate_buyer_fit(config, buyer, weapon):
++    if buyer.guest_class != weapon.item_class:
++        return None
++    fit_cfg = config["economy"]["buyer_fit"]
++    orders, weights = fit_cfg["quality_order"], fit_cfg["weights"]
++    tier_table = config["guest"]["tier_by_level"][_level_bracket(config, buyer.level)]
++    tier_fit = tier_table.get(str(weapon.tier), 0.0) / max(tier_table.values())
++    stat_probs = config["guest"]["stat_grade_by_power"][buyer.power]
++    high_probs = {("LOW" if key == "MIXED" else key): value for key, value in stat_probs.items()}
++    reinforce_probs = dict(config["guest"]["reinforce_by_tendency"][buyer.tendency]); reinforce_probs["UNENHANCED"] = 0.0
++    components = {
++        "tier": tier_fit,
++        "weapon_preference": 1.0 if weapon.item_type == buyer.preferred_weapon_type else fit_cfg["non_preferred_weapon_fit"],
++        "normal_stat": cumulative_quality_fit(weapon.normal_stat_grade, stat_probs, orders["normal_stat"]),
++        "high_stat": cumulative_quality_fit(weapon.high_stat_grade, high_probs, orders["high_stat"]),
++        "reinforcement": cumulative_quality_fit(weapon.reinforcement_grade, reinforce_probs, orders["reinforcement"]),
++        "refining": sum(probability for level, probability in _refining_probabilities(config, buyer.achievement).items() if level <= weapon.refining_level),
++        "amplification": cumulative_quality_fit(weapon.amplification_grade, _amplification_probabilities(config, buyer.title), orders["amplification"]),
++        "unique_stat": cumulative_quality_fit(weapon.unique_stat_grade, config["guest"]["unique_by_tendency"][buyer.tendency], orders["unique_stat"]),
++    }
++    score = sum(weights[name] * value for name, value in components.items())
++    return BuyerFit(max(0.0, min(100.0, score)), components, tier_fit, weapon.item_type == buyer.preferred_weapon_type)
++
++
++def interest_band(config, score):
++    return next((band for band in config["economy"]["interest_bands"] if score >= band["minimum"]), None)
++
++
++def choose_inventory_item(config, rng, buyer, inventory):
++    scored = [(item, calculate_buyer_fit(config, buyer, item.weapon)) for item in inventory]
++    scored = [(item, fit) for item, fit in scored if fit is not None]
++    if not scored:
++        return None, None, "NO_COMPATIBLE_ITEM"
++    best_score = max(fit.score for _, fit in scored)
++    best = [(item, fit) for item, fit in scored if abs(fit.score - best_score) < 1e-9]
++    item, fit = rng.choice(best)
++    if interest_band(config, fit.score) is None:
++        return item, fit, "NO_INTEREST"
++    return item, fit, None
+diff --git a/simulator/config.py b/simulator/config.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..b5e39e4e8016dcc7e0866dadaa6aab0800e4ef90
+--- /dev/null
++++ b/simulator/config.py
+@@ -0,0 +1,65 @@
++import json
++from pathlib import Path
++from typing import Any
++
++
++DEFAULT_CONFIG = Path(__file__).resolve().parents[1] / "config" / "balance.json"
++
++
++class ConfigError(ValueError):
++    pass
++
++
++def load_config(path: Path = DEFAULT_CONFIG) -> dict[str, Any]:
++    with path.open(encoding="utf-8") as handle:
++        config = json.load(handle)
++    validate_config(config)
++    return config
++
++
++def validate_weights(weights: dict[str, float], name: str) -> None:
++    if not weights:
++        raise ConfigError(f"{name}: probability table is empty")
++    if any(not isinstance(value, (int, float)) or value < 0 for value in weights.values()):
++        raise ConfigError(f"{name}: weights must be non-negative numbers")
++    if abs(sum(weights.values()) - 1.0) > 1e-8:
++        raise ConfigError(f"{name}: weights sum to {sum(weights.values())}, expected 1.0")
++
++
++def validate_config(config: dict[str, Any]) -> None:
++    guest = config["guest"]
++    weapon = config["weapon"]
++    for group in ["tier_by_level", "stat_grade_by_power", "unique_by_tendency", "reinforce_by_tendency", "refining_band_by_achievement", "amplification_count_by_title"]:
++        for key, table in guest[group].items():
++            validate_weights(table, f"guest.{group}.{key}")
++    for name in ["compatibility_weights", "foreign_mode_weights", "foreign_raw_normal_stat_weights", "foreign_raw_high_stat_weights", "foreign_raw_unique_weights", "special_stat_weights", "amplification_quality_weights"]:
++        validate_weights(weapon[name], f"weapon.{name}")
++    for key, table in weapon["stability_by_processing_load"].items():
++        validate_weights(table, f"weapon.stability_by_processing_load.{key}")
++    validate_weights(config["reputation"]["no_purchase_deltas"], "reputation.no_purchase_deltas")
++    validate_weights(config["economy"]["visitor_roles"], "economy.visitor_roles")
++    if sum(config["economy"]["buyer_fit"]["weights"].values()) != 100:
++        raise ConfigError("economy.buyer_fit.weights must sum to 100")
++    for axis, variables in config["progression"].items():
++        if axis == "temporary":
++            continue
++        for variable, progression in variables.items():
++            anchors = progression["anchors"]
++            values = [anchor["value"] for anchor in anchors]
++            if values != sorted(set(values)):
++                raise ConfigError(f"progression.{axis}.{variable}: anchors must be unique and increasing")
++            expected_keys = set(anchors[0]["weights"])
++            for anchor in anchors:
++                if set(anchor["weights"]) != expected_keys:
++                    raise ConfigError(f"progression.{axis}.{variable}: category keys differ between anchors")
++                validate_weights(anchor["weights"], f"progression.{axis}.{variable}.{anchor['value']}")
++
++
++def weighted_choice(rng, weights: dict[str, float]) -> str:
++    point = rng.random()
++    cumulative = 0.0
++    for choice, weight in weights.items():
++        cumulative += weight
++        if point < cumulative:
++            return choice
++    return next(reversed(weights))
+diff --git a/simulator/economy_simulation.py b/simulator/economy_simulation.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..775bb39c677380795b24ec3b95581920b498316e
+--- /dev/null
++++ b/simulator/economy_simulation.py
+@@ -0,0 +1,260 @@
++"""Time-based seller → inventory → buyer economy simulation."""
++import csv
++import random
++import statistics
++from collections import Counter
++from dataclasses import dataclass, field
++from pathlib import Path
++
++from .buyer_fit import choose_inventory_item, interest_band
++from .config import weighted_choice
++from .guest_generator import generate_guest
++from .price_calculator import calculate_price
++from .progression import customer_progression_distributions
++from .reputation_simulation import apply_reputation_delta, completed_trade_reputation_delta, _percentile
++from .weapon_generator import generate_weapon
++
++
++@dataclass
++class InventoryItem:
++    item_id: int
++    weapon: object
++    seller_guest: object
++    purchase_day: int
++    purchase_week: int
++    final_purchase_price: int
++    purchase_appraised_price: int
++    current_appraised_price: int
++    shop_listing_price: int
++
++    def days_in_inventory(self, day): return day - self.purchase_day
++
++
++@dataclass
++class ShopState:
++    cash: float
++    reputation: float = 0.0
++    shop_trade_count: int = 0
++    shop_purchase_count: int = 0
++    shop_sale_count: int = 0
++    inventory: list = field(default_factory=list)
++    realized_profit: float = 0.0
++    margins: list = field(default_factory=list)
++    holding_days: list = field(default_factory=list)
++    counters: Counter = field(default_factory=Counter)
++
++
++def roll_market(rng, config):
++    powers = list(config["price"]["market_power_values"]); popularities = list(config["price"]["market_popularity_values"])
++    return {name: (rng.choice(powers), rng.choice(popularities)) for name in config["guest"]["classes"]}
++
++
++def revalue_item(config, item, market):
++    power, popularity = market[item.weapon.item_class]
++    return calculate_price(config, item.seller_guest, item.weapon, power, popularity).appraised_price
++
++
++def _transaction_base(day, guest, state):
++    return {"day": day, "week": (day - 1) // 7 + 1, "customer_role": guest.role, "guest_class": guest.guest_class,
++            "preferred_weapon_type": guest.preferred_weapon_type, "transaction_type": "NONE", "item_id": None,
++            "item_class": None, "item_type": None, "item_tier": None, "buyer_fit_score": None,
++            "tier_fit": None, "preference_match": None, "fit_band": None, "purchase_price": None,
++            "purchase_appraised_price": None, "current_appraised_price": None, "listing_price": None,
++            "buyer_offer_price": None, "final_sale_price": None, "gross_profit": None, "margin_rate": None,
++            "haggle_count": None, "outcome": None, "reputation_before": state.reputation,
++            "reputation_delta": 0.0, "reputation_after": state.reputation, "trade_count": state.shop_trade_count,
++            "cash_before": state.cash, "cash_after": state.cash, "days_in_inventory": None}
++
++
++def _finish(row, state, delta=0.0):
++    row.update(reputation_delta=delta, reputation_after=state.reputation, trade_count=state.shop_trade_count, cash_after=state.cash)
++    return row
++
++
++def process_seller(config, rng, state, guest, market, day, item_id):
++    row = _transaction_base(day, guest, state)
++    weapon, _ = generate_weapon(rng, config, guest, market)
++    power, popularity = market[weapon.item_class]
++    price = calculate_price(config, guest, weapon, power, popularity)
++    row.update(item_id=item_id, item_class=weapon.item_class, item_type=weapon.item_type, item_tier=weapon.tier,
++               purchase_appraised_price=price.appraised_price, current_appraised_price=price.appraised_price)
++    if price.asking_price > price.appraised_price:
++        outcome = "REJECTED_SCAMMER" if guest.kindness == "SCAMMER" else "REJECTED_OVERPRICED"
++        state.counters[outcome] += 1
++        raw = config["reputation"]["failed_scam_delta"] if guest.kindness == "SCAMMER" else float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
++        delta = apply_reputation_delta(config, state.reputation, raw); state.reputation += delta
++        row["outcome"] = outcome; return _finish(row, state, delta), item_id
++    if state.cash < price.asking_price:
++        state.counters["MISSED_PURCHASE_DUE_TO_CASH"] += 1; row["outcome"] = "MISSED_PURCHASE_DUE_TO_CASH"
++        raw = float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
++        delta = apply_reputation_delta(config, state.reputation, raw); state.reputation += delta
++        return _finish(row, state, delta), item_id
++    state.cash -= price.asking_price; state.shop_purchase_count += 1; state.shop_trade_count += 1
++    raw = completed_trade_reputation_delta(config, guest, price.asking_price / price.appraised_price)
++    delta = apply_reputation_delta(config, state.reputation, raw); state.reputation += delta
++    listing = round(price.appraised_price * (1 + config["economy"]["listing_markup"]))
++    state.inventory.append(InventoryItem(item_id, weapon, guest, day, row["week"], price.asking_price, price.appraised_price, price.appraised_price, listing))
++    state.counters["SUCCESSFUL_PURCHASE"] += 1
++    row.update(transaction_type="BUY_FROM_CUSTOMER", outcome="SUCCESSFUL_PURCHASE", purchase_price=price.asking_price, listing_price=listing)
++    return _finish(row, state, delta), item_id + 1
++
++
++def process_buyer(config, rng, state, guest, market, day):
++    row = _transaction_base(day, guest, state)
++    state.counters["BUYER_VISITS"] += 1
++    item, fit, failure = choose_inventory_item(config, rng, guest, state.inventory)
++    if failure:
++        state.counters[failure] += 1; row["outcome"] = failure
++        if fit: row.update(buyer_fit_score=fit.score, tier_fit=fit.tier_fit, preference_match=fit.preference_match)
++        return _finish(row, state)
++    current = revalue_item(config, item, market); item.current_appraised_price = current
++    listing = round(current * (1 + config["economy"]["listing_markup"])); item.shop_listing_price = listing
++    band = interest_band(config, fit.score)
++    ceiling = current * (band["price_multiplier"] + config["economy"]["knowledge_price_adjustment"][guest.knowledge])
++    offer = round(min(listing * (1 - band["desired_discount"]), ceiling))
++    minimum = max(current, item.final_purchase_price * (1 + config["economy"]["minimum_profit_over_cost"]))
++    row.update(item_id=item.item_id, item_class=item.weapon.item_class, item_type=item.weapon.item_type, item_tier=item.weapon.tier,
++               buyer_fit_score=fit.score, tier_fit=fit.tier_fit, preference_match=fit.preference_match, fit_band=band["name"],
++               purchase_price=item.final_purchase_price, purchase_appraised_price=item.purchase_appraised_price,
++               current_appraised_price=current, listing_price=listing, buyer_offer_price=offer, haggle_count=band["haggles"],
++               days_in_inventory=item.days_in_inventory(day))
++    if offer < minimum:
++        state.counters["PRICE_NEGOTIATION_FAILURE"] += 1; row["outcome"] = "PRICE_NEGOTIATION_FAILURE"
++        return _finish(row, state)
++    gross = offer - item.final_purchase_price; margin = gross / item.final_purchase_price
++    state.cash += offer; state.inventory.remove(item); state.shop_sale_count += 1; state.shop_trade_count += 1
++    state.realized_profit += gross; state.margins.append(margin); state.holding_days.append(item.days_in_inventory(day))
++    raw = config["economy"]["sale_reputation_by_haggles"][str(band["haggles"])]
++    delta = apply_reputation_delta(config, state.reputation, raw); state.reputation += delta
++    state.counters["BUYER_PURCHASES"] += 1
++    row.update(transaction_type="SELL_TO_CUSTOMER", outcome="BUYER_PURCHASES", final_sale_price=offer, gross_profit=gross, margin_rate=margin)
++    return _finish(row, state, delta)
++
++
++def snapshot(config, state, market, week, day):
++    values = [revalue_item(config, item, market) for item in state.inventory]
++    for item, value in zip(state.inventory, values): item.current_appraised_price = value
++    cost = sum(item.final_purchase_price for item in state.inventory); value = sum(values)
++    return {"week": week, "cash": state.cash, "inventory_count": len(state.inventory), "inventory_cost_basis": cost,
++            "inventory_value": value, "unrealized_gain": value-cost, "net_worth": state.cash+value,
++            "reputation": state.reputation, "shop_purchase_count": state.shop_purchase_count,
++            "shop_sale_count": state.shop_sale_count, "shop_trade_count": state.shop_trade_count,
++            "realized_profit": state.realized_profit, "mean_margin": statistics.fmean(state.margins) if state.margins else 0,
++            "median_margin": statistics.median(state.margins) if state.margins else 0,
++            "mean_holding_days": statistics.fmean(state.holding_days) if state.holding_days else 0,
++            "median_holding_days": statistics.median(state.holding_days) if state.holding_days else 0,
++            "sell_through_rate": state.shop_sale_count/state.shop_purchase_count if state.shop_purchase_count else 0,
++            **state.counters}
++
++
++def run_economy_trial(config, seed, weeks=None, starting_cash=None):
++    rng=random.Random(seed); weeks=weeks or config["economy"]["weeks"]
++    state=ShopState(float(starting_cash if starting_cash is not None else config["economy"]["starting_cash"]))
++    market=roll_market(rng,config); transactions=[]; checkpoints={}; visitor=0; item_id=1
++    for day in range(1,weeks*7+1):
++        if day > 1 and (day-1)%7==0: market=roll_market(rng,config)
++        visits=rng.randint(config["economy"]["daily_visitors"]["minimum"],config["economy"]["daily_visitors"]["maximum"])
++        for _ in range(visits):
++            visitor += 1; guest=generate_guest(rng,config,state.reputation,state.shop_trade_count,visitor)
++            state.counters[f"{guest.role}_VISITS"] += 1
++            if guest.role=="SELL_TO_SHOP": row,item_id=process_seller(config,rng,state,guest,market,day,item_id)
++            else: row=process_buyer(config,rng,state,guest,market,day)
++            transactions.append(row)
++        week=(day-1)//7+1
++        if day%7==0 and week in config["economy"]["checkpoints"]: checkpoints[week]=snapshot(config,state,market,week,day)
++    return {"checkpoints":checkpoints,"transactions":transactions,"inventory":state.inventory,"state":state,"market":market}
++
++def run_economy_monte_carlo(config, trials, seed, weeks=None, starting_cash=None):
++    if trials < 1: raise ValueError("trials must be positive")
++    trial_results=[run_economy_trial(config,seed+i,weeks,starting_cash) for i in range(trials)]
++    checkpoints={}
++    for week in config["economy"]["checkpoints"]:
++        rows=[trial["checkpoints"][week] for trial in trial_results]
++        summary={"week":week}
++        for key in dict.fromkeys(key for row in rows for key in row):
++            if key=="week": continue
++            values=[row.get(key,0) for row in rows]
++            summary[key+"_mean"]=statistics.fmean(values); summary[key+"_median"]=statistics.median(values)
++            if key in ("cash","inventory_value","net_worth","reputation","shop_trade_count"):
++                summary[key+"_p10"]=_percentile(values,.1); summary[key+"_p90"]=_percentile(values,.9)
++        median_rep=summary["reputation_median"]; median_trades=summary["shop_trade_count_median"]
++        summary["customer_distributions"]=customer_progression_distributions(config,median_rep,median_trades)
++        checkpoints[week]=summary
++    transactions=[row for trial in trial_results for row in trial["transactions"]]
++    final_inventory=[item for trial in trial_results for item in trial["inventory"]]
++    return {"checkpoints":checkpoints,"transactions":transactions,"final_inventory":final_inventory,"sample_trial":trial_results[0],"trials":trials,"config":config}
++
++
++def economy_analytics(result):
++    tx=result["transactions"]; buys=[r for r in tx if r["transaction_type"]=="BUY_FROM_CUSTOMER"]; sales=[r for r in tx if r["transaction_type"]=="SELL_TO_CUSTOMER"]
++    buyers=[r for r in tx if r["customer_role"]=="BUY_FROM_SHOP"]
++    fits=[r for r in buyers if r["buyer_fit_score"] is not None]
++    inventory=result["final_inventory"]
++    analytics={"mean_purchase_price":statistics.fmean(r["purchase_price"] for r in buys) if buys else 0,
++      "mean_sale_price":statistics.fmean(r["final_sale_price"] for r in sales) if sales else 0,
++      "mean_margin":statistics.fmean(r["margin_rate"] for r in sales) if sales else 0,
++      "median_margin":statistics.median(r["margin_rate"] for r in sales) if sales else 0,
++      "mean_holding_days":statistics.fmean(r["days_in_inventory"] for r in sales) if sales else 0,
++      "sell_through_rate":len(sales)/len(buys) if buys else 0,
++      "buyer_success_rate":len(sales)/len(buyers) if buyers else 0,
++      "buyer_failures":Counter(r["outcome"] for r in buyers if r["transaction_type"]=="NONE"),
++      "mean_success_fit":statistics.fmean(r["buyer_fit_score"] for r in sales) if sales else 0,
++      "mean_failed_fit":statistics.fmean(r["buyer_fit_score"] for r in fits if r["transaction_type"]=="NONE") if any(r["transaction_type"]=="NONE" for r in fits) else 0,
++      "cash_misses":sum(r["outcome"]=="MISSED_PURCHASE_DUE_TO_CASH" for r in tx)}
++    end_day=max(r["day"] for r in tx)
++    for days in result["config"]["economy"]["long_inventory_days"]:
++        analytics[f"inventory_{days}_plus_rate"]=sum(end_day-item.purchase_day>=days for item in inventory)/len(inventory) if inventory else 0
++    analytics["fit_bands"]={}
++    for band in {r["fit_band"] for r in fits if r["fit_band"]}:
++        rows=[r for r in fits if r["fit_band"]==band]; sold=[r for r in rows if r["transaction_type"]=="SELL_TO_CUSTOMER"]
++        analytics["fit_bands"][band]={"visits":len(rows),"success_rate":len(sold)/len(rows),"average_sale_price":statistics.fmean(r["final_sale_price"] for r in sold) if sold else 0,"average_margin":statistics.fmean(r["margin_rate"] for r in sold) if sold else 0,"average_haggles":statistics.fmean(r["haggle_count"] for r in rows)}
++    analytics["preference"] = {}
++    for matched in (True, False):
++        rows=[r for r in fits if r["preference_match"] is matched]; sold=[r for r in rows if r["transaction_type"]=="SELL_TO_CUSTOMER"]
++        analytics["preference"]["MATCH" if matched else "NON_PREFERRED"]={"visits":len(rows),"success_rate":len(sold)/len(rows) if rows else 0,"average_fit":statistics.fmean(r["buyer_fit_score"] for r in rows) if rows else 0,"average_holding_days":statistics.fmean(r["days_in_inventory"] for r in sold) if sold else 0,"average_margin":statistics.fmean(r["margin_rate"] for r in sold) if sold else 0}
++    analytics["tier_fit"]={}
++    for low,high in ((0,.25),(.25,.5),(.5,.75),(.75,1.01)):
++        rows=[r for r in fits if low <= r["tier_fit"] < high]; sold=[r for r in rows if r["transaction_type"]=="SELL_TO_CUSTOMER"]
++        analytics["tier_fit"][f"{low:.2f}-{min(high,1):.2f}"]={"candidates":len(rows),"success_rate":len(sold)/len(rows) if rows else 0,"average_fit":statistics.fmean(r["buyer_fit_score"] for r in rows) if rows else 0,"average_sale_price":statistics.fmean(r["final_sale_price"] for r in sold) if sold else 0}
++    stale=Counter((item.weapon.item_class,item.weapon.item_type,item.weapon.tier) for item in inventory if end_day-item.purchase_day>=30)
++    analytics["top_stale_items"]=stale.most_common(10)
++    return analytics
++
++
++def export_rows(rows,path):
++    path=Path(path); path.parent.mkdir(parents=True,exist_ok=True)
++    if not rows:return
++    fieldnames = list(dict.fromkeys(key for row in rows for key in row))
++    with path.open("w",newline="",encoding="utf-8") as f:
++        writer=csv.DictWriter(f,fieldnames=fieldnames);writer.writeheader();writer.writerows(rows)
++
++
++def export_economy_reports(result, output_dir):
++    output_dir=Path(output_dir)
++    weekly=[]
++    for row in result["checkpoints"].values():
++        flat={k:v for k,v in row.items() if k!="customer_distributions"}
++        for name,weights in row["customer_distributions"].items(): flat[name+"_probabilities"]=str(weights)
++        weekly.append(flat)
++    export_rows(weekly,output_dir/"economy_weekly_report.csv")
++    export_rows(result["sample_trial"]["transactions"],output_dir/"economy_transactions.csv")
++    end_day=max(r["day"] for r in result["sample_trial"]["transactions"])
++    inventory=[]
++    for item in result["sample_trial"]["inventory"]:
++        inventory.append({"item_id":item.item_id,"item_class":item.weapon.item_class,"item_type":item.weapon.item_type,"item_tier":item.weapon.tier,"purchase_day":item.purchase_day,"purchase_week":item.purchase_week,"final_purchase_price":item.final_purchase_price,"purchase_appraised_price":item.purchase_appraised_price,"current_appraised_price":item.current_appraised_price,"shop_listing_price":item.shop_listing_price,"days_in_inventory":item.days_in_inventory(end_day)})
++    export_rows(inventory,output_dir/"inventory_snapshot.csv")
++
++
++def format_economy_report(result):
++    lines=[f"ECONOMY SIMULATION ({result['trials']:,} trials)"]
++    for week,row in result["checkpoints"].items():
++        lines.append(f"Week {week}: cash median={row['cash_median']:,.0f} G, inventory value median={row['inventory_value_median']:,.0f} G, net worth median={row['net_worth_median']:,.0f} G, reputation median={row['reputation_median']:.2f}, trades median={row['shop_trade_count_median']:.0f}")
++        for name, weights in row["customer_distributions"].items():
++            lines.append(f"  {name}: " + ", ".join(f"{key}={value:.1%}" for key,value in weights.items()))
++    a=economy_analytics(result)
++    lines.append(f"Overall: purchase mean={a['mean_purchase_price']:,.0f} G, sale mean={a['mean_sale_price']:,.0f} G, margin mean/median={a['mean_margin']:.1%}/{a['median_margin']:.1%}, holding={a['mean_holding_days']:.1f} days, sell-through={a['sell_through_rate']:.1%}, buyer success={a['buyer_success_rate']:.1%}, cash misses={a['cash_misses']}")
++    lines.append("Buyer failures: "+", ".join(f"{k}={v}" for k,v in a['buyer_failures'].items()))
++    lines.append("Preference: "+", ".join(f"{k} success={v['success_rate']:.1%} fit={v['average_fit']:.1f} hold={v['average_holding_days']:.1f}d margin={v['average_margin']:.1%}" for k,v in a['preference'].items()))
++    lines.append("Tier fit: "+", ".join(f"{k} n={v['candidates']} success={v['success_rate']:.1%} fit={v['average_fit']:.1f}" for k,v in a['tier_fit'].items()))
++    lines.append("Long inventory: "+", ".join(f"{days}+d={a[f'inventory_{days}_plus_rate']:.1%}" for days in result['config']['economy']['long_inventory_days']))
++    return "\n".join(lines)
+diff --git a/simulator/guest_generator.py b/simulator/guest_generator.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..623411fa387d5fef51bcdf3eae42db1787a9e182
+--- /dev/null
++++ b/simulator/guest_generator.py
+@@ -0,0 +1,25 @@
++from .config import weighted_choice
++from .models import Guest
++from .progression import interpolated_weights
++
++
++def generate_guest(rng, config, shop_reputation=0.0, shop_trade_count=0, visitor_number=None) -> Guest:
++    cfg = config["guest"]
++    progression = config["progression"]
++    bracket = weighted_choice(rng, interpolated_weights(progression["reputation"]["guest_level"], shop_reputation))
++    low, high = map(int, bracket.split("-"))
++    role = "SELL_TO_SHOP" if visitor_number is None or visitor_number <= config["economy"]["forced_initial_seller_visits"] else weighted_choice(rng, config["economy"]["visitor_roles"])
++    guest_class = rng.choice(cfg["classes"])
++    return Guest(
++        kindness=weighted_choice(rng, interpolated_weights(progression["reputation"]["guest_kindness"], shop_reputation)),
++        guest_class=guest_class,
++        level=rng.randint(low, high),
++        power=weighted_choice(rng, interpolated_weights(progression["reputation"]["guest_power"], shop_reputation)),
++        tendency=rng.choice(cfg["tendencies"]),
++        achievement=weighted_choice(rng, interpolated_weights(progression["trade_count"]["guest_achievement"], shop_trade_count)),
++        title=weighted_choice(rng, interpolated_weights(progression["trade_count"]["guest_title"], shop_trade_count)),
++        knowledge=rng.choice(cfg["knowledge"]),
++        purpose=rng.choice(cfg["purposes"]),
++        role=role,
++        preferred_weapon_type=rng.choice(config["weapon"]["class_weapon_pools"][guest_class]) if role == "BUY_FROM_SHOP" else None,
++    )
+diff --git a/simulator/main.py b/simulator/main.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..bfcc2d1e2f5c019d18a76b43ff74742793b2a563
+--- /dev/null
++++ b/simulator/main.py
+@@ -0,0 +1,49 @@
++import argparse
++from pathlib import Path
++
++if __package__ in (None, ""):
++    import sys
++    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
++
++from simulator.config import DEFAULT_CONFIG, load_config
++from simulator.economy_simulation import export_economy_reports, format_economy_report, run_economy_monte_carlo
++from simulator.report import build_generation_mode_report, build_report, format_samples
++from simulator.reputation_simulation import export_progression_csv, format_reputation_report, simulate_fair_value_strategy
++from simulator.simulation import export_csv, run_simulation
++
++
++def main(argv=None):
++    parser = argparse.ArgumentParser(description="RPG Weapon Pawnshop balance simulator")
++    parser.add_argument("--count", type=int, default=10_000)
++    parser.add_argument("--seed", type=int, default=12345)
++    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
++    parser.add_argument("--output", type=Path, default=Path("output/simulation_results.csv"))
++    parser.add_argument("--samples", type=int, default=20)
++    parser.add_argument("--reputation-trials", type=int, default=1000, help="Monte Carlo trials for fair-value purchase reputation checkpoints; 0 disables")
++    parser.add_argument("--progression-output", type=Path, default=Path("output/progression_report.csv"))
++    parser.add_argument("--economy-trials", type=int, default=100)
++    parser.add_argument("--economy-weeks", type=int, default=24)
++    parser.add_argument("--starting-cash", type=float)
++    parser.add_argument("--economy-output-dir", type=Path, default=Path("output"))
++    args = parser.parse_args(argv)
++    config = load_config(args.config)
++    records = run_simulation(config, args.count, args.seed)
++    export_csv(records, args.output)
++    print(build_report(records))
++    print("\n\n" + build_generation_mode_report(records))
++    if args.samples:
++        print("\n\nREADABLE SAMPLES\n" + format_samples(records, min(args.samples, len(records))))
++    if args.reputation_trials:
++        reputation = simulate_fair_value_strategy(config, args.reputation_trials, args.seed + 1)
++        export_progression_csv(reputation, args.progression_output)
++        print("\n\n" + format_reputation_report(reputation, args.reputation_trials, config["analysis"]["progression_distribution_checkpoints"]))
++        print(f"Progression CSV written to {args.progression_output}")
++    if args.economy_trials:
++        economy = run_economy_monte_carlo(config, args.economy_trials, args.seed + 2, args.economy_weeks, args.starting_cash)
++        export_economy_reports(economy, args.economy_output_dir)
++        print("\n\n" + format_economy_report(economy))
++    print(f"\nCSV written to {args.output}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/simulator/models.py b/simulator/models.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..e8b0ce4f82cc59e489f411560f896c55aafac396
+--- /dev/null
++++ b/simulator/models.py
+@@ -0,0 +1,121 @@
++from dataclasses import asdict, dataclass, field
++from typing import Any
++
++
++@dataclass(frozen=True)
++class Guest:
++    kindness: str
++    guest_class: str
++    level: int
++    power: str
++    tendency: str
++    achievement: str
++    title: str
++    knowledge: str
++    purpose: str
++    role: str = "SELL_TO_SHOP"
++    preferred_weapon_type: str | None = None
++
++
++@dataclass(frozen=True)
++class StatLine:
++    stat_id: str
++    category: str
++    internal_grade: str | None
++    actual_value: float
++    display_unit: str
++    is_relevant: bool
++
++
++@dataclass
++class KnownField:
++    knowledge_state: str = "UNKNOWN"
++    known_exact_value: Any = None
++    known_min_value: Any = None
++    known_max_value: Any = None
++
++
++@dataclass
++class WeaponKnownState:
++    knows_item_type: bool = False
++    item_type: str | None = None
++    item_tier: KnownField = field(default_factory=KnownField)
++    known_stat_lines: dict[str, KnownField] = field(default_factory=dict)
++    reinforcement: KnownField = field(default_factory=KnownField)
++    refining: KnownField = field(default_factory=KnownField)
++    amplification: KnownField = field(default_factory=KnownField)
++    stability: KnownField = field(default_factory=KnownField)
++
++
++@dataclass(frozen=True)
++class WeaponTrueState:
++    item_type: str
++    item_class: str
++    compatible: bool
++    generation_mode: str
++    tier: int
++    normal_stat_grade: str
++    high_stat_grade: str
++    special_stat_grade: str
++    unique_stat_grade: str
++    reinforcement_grade: str
++    refining_level: int
++    amplification_grade: str
++    processing_load: int
++    popularity_load: int
++    class_power_load: int
++    effective_processing_load: int
++    stability: int
++    stability_bracket: str
++    stat_lines: tuple[StatLine, ...]
++    amplification_lines: tuple[StatLine, ...]
++
++    @property
++    def target_class(self) -> str:
++        """Backward-compatible alias for the specification's older name."""
++        return self.item_class
++
++
++@dataclass(frozen=True)
++class PriceResult:
++    base_price: int
++    item_value_modifier: float
++    effective_refining_value: float
++    stability_multiplier: float
++    appraised_price: int
++    asking_price: int
++
++
++@dataclass(frozen=True)
++class SimulationRecord:
++    record_id: int
++    guest: Guest
++    weapon: WeaponTrueState
++    known_state: WeaponKnownState
++    class_power: str
++    class_popularity: str
++    price: PriceResult
++
++    def flat_dict(self) -> dict[str, Any]:
++        row = {"record_id": self.record_id}
++        row.update({f"guest_{k}": v for k, v in asdict(self.guest).items()})
++        weapon = asdict(self.weapon)
++        weapon["stat_lines"] = "|".join(format_stat_line(StatLine(**x)) for x in weapon["stat_lines"])
++        weapon["amplification_lines"] = "|".join(format_stat_line(StatLine(**x)) for x in weapon["amplification_lines"])
++        row.update({f"item_{k}": v for k, v in weapon.items()})
++        row.update({
++            "known_item_type": self.known_state.knows_item_type,
++            "known_tier_state": self.known_state.item_tier.knowledge_state,
++            "known_reinforcement_state": self.known_state.reinforcement.knowledge_state,
++            "known_refining_state": self.known_state.refining.knowledge_state,
++            "known_amplification_state": self.known_state.amplification.knowledge_state,
++            "known_stability_state": self.known_state.stability.knowledge_state,
++        })
++        row.update({"class_power": self.class_power, "class_popularity": self.class_popularity})
++        row.update({f"price_{k}": v for k, v in asdict(self.price).items()})
++        return row
++
++
++def format_stat_line(line: StatLine) -> str:
++    value = f"{line.actual_value:g}{'%' if line.display_unit == 'PERCENT' else ''}"
++    return f"{line.stat_id} +{value}"
+diff --git a/simulator/price_calculator.py b/simulator/price_calculator.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..8be673d9d8cc593a4b10c1f0dcfc53b89c0d09c3
+--- /dev/null
++++ b/simulator/price_calculator.py
+@@ -0,0 +1,21 @@
++from .models import PriceResult
++
++
++def calculate_price(config, guest, weapon, class_power, class_popularity):
++    cfg = config["price"]
++    refining = cfg["refining_values"][str(weapon.refining_level)]
++    effective = refining * (0.4 * cfg["normal_coefficients"][weapon.normal_stat_grade] + 0.6 * cfg["high_coefficients"][weapon.high_stat_grade])
++    modifier = sum((
++        cfg["market_power_values"][class_power], cfg["market_popularity_values"][class_popularity],
++        cfg["normal_values"][weapon.normal_stat_grade], cfg["high_values"][weapon.high_stat_grade],
++        cfg["special_values"][weapon.special_stat_grade], cfg["unique_values"][weapon.unique_stat_grade],
++        cfg["reinforce_values"][weapon.reinforcement_grade], cfg["amplification_values"][weapon.amplification_grade], effective,
++    ))
++    multiplier_set = cfg["stability_multipliers"]["at_least_2" if modifier >= 2 else "below_2"]
++    threshold = next(str(x) for x in (100, 80, 60, 40, 20, 0) if weapon.stability >= x)
++    stability_multiplier = multiplier_set[threshold]
++    base = cfg["base_prices"][str(weapon.tier)]
++    appraised = round(max(base * (1 + modifier) * stability_multiplier, base * cfg["minimum_price_ratio"]))
++    normal_asking = appraised * cfg["purpose_multipliers"][guest.purpose] * cfg["knowledge_multipliers"][guest.knowledge]
++    asking = max(normal_asking, appraised * cfg["scammer_minimum_multiplier"]) if guest.kindness == "SCAMMER" else normal_asking
++    return PriceResult(base, modifier, effective, stability_multiplier, appraised, round(asking))
+diff --git a/simulator/progression.py b/simulator/progression.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..3a44f913b49ec8fa01e511aee02156fcf5f11dda
+--- /dev/null
++++ b/simulator/progression.py
+@@ -0,0 +1,30 @@
++"""Config-driven customer progression interpolation and analysis helpers."""
++
++
++def interpolated_weights(progression, value):
++    anchors = progression["anchors"]
++    if value <= anchors[0]["value"]:
++        return dict(anchors[0]["weights"])
++    if value >= anchors[-1]["value"]:
++        return dict(anchors[-1]["weights"])
++    lower, upper = next(
++        (a, b) for a, b in zip(anchors, anchors[1:])
++        if a["value"] <= value <= b["value"]
++    )
++    fraction = (value - lower["value"]) / (upper["value"] - lower["value"])
++    weights = {
++        key: lower["weights"][key] + fraction * (upper["weights"][key] - lower["weights"][key])
++        for key in lower["weights"]
++    }
++    total = sum(weights.values())
++    return {key: max(0.0, weight) / total for key, weight in weights.items()}
++
++
++def customer_progression_distributions(config, reputation, trade_count):
++    progression = config["progression"]
++    result = {}
++    for name, table in progression["reputation"].items():
++        result[name] = interpolated_weights(table, reputation)
++    for name, table in progression["trade_count"].items():
++        result[name] = interpolated_weights(table, trade_count)
++    return result
+diff --git a/simulator/report.py b/simulator/report.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b9b2541ae6b8899415aa4501fc17180e8006eb8
+--- /dev/null
++++ b/simulator/report.py
+@@ -0,0 +1,88 @@
++from collections import Counter
++from dataclasses import fields
++from math import ceil
++
++from .models import format_stat_line
++
++
++def _distribution(label, values):
++    counts, total = Counter(values), len(values)
++    lines = [f"\n{label}:"]
++    lines.extend(f"  {key}: {count:,} ({count / total:.2%})" for key, count in sorted(counts.items(), key=lambda x: str(x[0])))
++    return "\n".join(lines)
++
++
++def _percentile(sorted_values, percent):
++    index = (len(sorted_values) - 1) * percent
++    lower, upper = int(index), ceil(index)
++    if lower == upper:
++        return sorted_values[lower]
++    return sorted_values[lower] + (sorted_values[upper] - sorted_values[lower]) * (index - lower)
++
++
++def build_report(records):
++    categories = {
++        "guest_kindness": [x.guest.kindness for x in records], "guest_class": [x.guest.guest_class for x in records],
++        "guest_level": [x.guest.level for x in records], "guest_power": [x.guest.power for x in records],
++        "guest_tendency": [x.guest.tendency for x in records], "guest_achievement": [x.guest.achievement for x in records],
++        "guest_title": [x.guest.title for x in records], "guest_knowledge": [x.guest.knowledge for x in records],
++        "guest_purpose": [x.guest.purpose for x in records], "item_type": [x.weapon.item_type for x in records],
++        "item_compatible": [x.weapon.compatible for x in records], "item_tier": [x.weapon.tier for x in records],
++        "generation_mode": [x.weapon.generation_mode for x in records], "item_class": [x.weapon.item_class for x in records],
++        "normal_stat_grade": [x.weapon.normal_stat_grade for x in records], "high_stat_grade": [x.weapon.high_stat_grade for x in records],
++        "unique_stat_grade": [x.weapon.unique_stat_grade for x in records], "reinforcement_grade": [x.weapon.reinforcement_grade for x in records],
++        "refining_level": [x.weapon.refining_level for x in records], "amplification_grade": [x.weapon.amplification_grade for x in records],
++        "processing_load": [x.weapon.processing_load for x in records],
++        "effective_processing_load": [x.weapon.effective_processing_load for x in records],
++        "stability": [x.weapon.stability for x in records], "class_power": [x.class_power for x in records], "class_popularity": [x.class_popularity for x in records],
++    }
++    output = [f"SIMULATION SUMMARY ({len(records):,} records)"]
++    output.extend(_distribution(key, values) for key, values in categories.items())
++    for attribute in [x.name for x in fields(records[0].price)]:
++        values = sorted(getattr(x.price, attribute) for x in records)
++        output.append(f"\n{attribute}: mean={sum(values)/len(values):,.2f}, median={_percentile(values, .5):,.2f}, min={values[0]:,.2f}, max={values[-1]:,.2f}, p10={_percentile(values,.1):,.2f}, p25={_percentile(values,.25):,.2f}, p75={_percentile(values,.75):,.2f}, p90={_percentile(values,.9):,.2f}, p95={_percentile(values,.95):,.2f}, p99={_percentile(values,.99):,.2f}")
++    return "\n".join(output)
++
++
++def build_generation_mode_report(records):
++    output = ["GENERATION MODE ANALYSIS"]
++    for mode in ("OWN_CLASS", "FOREIGN_RAW", "FOREIGN_WORKED"):
++        selected = [record for record in records if record.weapon.generation_mode == mode]
++        if not selected:
++            continue
++        prices = sorted(record.price.appraised_price for record in selected)
++        tiers = sorted(record.weapon.tier for record in selected)
++        output.append(
++            f"\n{mode}: count={len(selected):,} ({len(selected)/len(records):.2%}), "
++            f"tier mean={sum(tiers)/len(tiers):.2f} median={_percentile(tiers,.5):.2f}, "
++            f"price mean={sum(prices)/len(prices):,.2f} median={_percentile(prices,.5):,.2f} "
++            f"p90={_percentile(prices,.9):,.2f} p99={_percentile(prices,.99):,.2f}, "
++            f"stability mean={sum(x.weapon.stability for x in selected)/len(selected):.2f}, "
++            f"processing load mean={sum(x.weapon.processing_load for x in selected)/len(selected):.2f}, "
++            f"effective load mean={sum(x.weapon.effective_processing_load for x in selected)/len(selected):.2f}"
++        )
++        for label, getter in (
++            ("stability", lambda x: x.weapon.stability_bracket),
++            ("reinforcement", lambda x: x.weapon.reinforcement_grade),
++            ("refining", lambda x: x.weapon.refining_level),
++            ("amplification", lambda x: x.weapon.amplification_grade),
++            ("processing_load", lambda x: x.weapon.processing_load),
++            ("effective_processing_load", lambda x: x.weapon.effective_processing_load),
++        ):
++            output.append(_distribution(f"  {label}", [getter(record) for record in selected]))
++    return "\n".join(output)
++
++
++def format_samples(records, count=20):
++    blocks = []
++    for record in records[:count]:
++        g, w, p = record.guest, record.weapon, record.price
++        stats = "\n".join(f"  {format_stat_line(line)}" for line in (*w.stat_lines, *w.amplification_lines)) or "  (none)"
++        blocks.append(f"""Customer #{record.record_id:03d}
++Class: {g.guest_class}\nLevel: {g.level}\nPower: {g.power}\nTendency: {g.tendency}\nAchievement: {g.achievement}\nTitle: {g.title}\nMarket Knowledge: {g.knowledge}\nPurpose: {g.purpose}
++Weapon: Tier {w.tier} {w.item_type}\nItem Class: {w.item_class}\nCompatible: {'Yes' if w.compatible else 'No'}\nGeneration Mode: {w.generation_mode}
++True Stats:\n{stats}
++Reinforcement: {w.reinforcement_grade}\nRefining: +{w.refining_level}\nAmplification: {w.amplification_grade}\nProcessing Load: {w.processing_load} + popularity {w.popularity_load} + class power {w.class_power_load} = {w.effective_processing_load}\nStability: {w.stability}%
++Base Price: {p.base_price:,} G\nAppraised Price: {p.appraised_price:,} G\nCustomer Asking Price: {p.asking_price:,} G
++Internal Grades: Normal={w.normal_stat_grade}, High={w.high_stat_grade}, Special={w.special_stat_grade}, Unique={w.unique_stat_grade}""")
++    return "\n\n".join(blocks)
+diff --git a/simulator/reputation_simulation.py b/simulator/reputation_simulation.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..df8b4df49d0817e357a0b68095ba436419b7cf64
+--- /dev/null
++++ b/simulator/reputation_simulation.py
+@@ -0,0 +1,109 @@
++import csv
++import json
++import random
++import statistics
++from math import ceil
++from pathlib import Path
++
++from .config import weighted_choice
++from .guest_generator import generate_guest
++from .price_calculator import calculate_price
++from .progression import customer_progression_distributions
++from .weapon_generator import generate_weapon
++
++
++def _percentile(values, fraction):
++    ordered = sorted(values)
++    index = (len(ordered) - 1) * fraction
++    lower, upper = int(index), ceil(index)
++    if lower == upper:
++        return ordered[lower]
++    return ordered[lower] + (ordered[upper] - ordered[lower]) * (index - lower)
++
++
++def satisfaction_for_ratio(config, purpose, offer_ratio):
++    for band in config["reputation"]["satisfaction_thresholds"][purpose]:
++        maximum = band["max"]
++        if maximum is None or offer_ratio < maximum or (band["inclusive"] and offer_ratio == maximum):
++            return band["result"]
++    raise ValueError(f"no satisfaction band for {purpose} at {offer_ratio}")
++
++
++def positive_reputation_multiplier(config, current_reputation):
++    ranges = config["reputation"]["positive_decay"]["ranges"]
++    eligible = [band for band in ranges if current_reputation >= band["minimum"]]
++    return (eligible[-1] if eligible else ranges[0])["multiplier"]
++
++
++def apply_reputation_delta(config, current_reputation, raw_delta):
++    return raw_delta * positive_reputation_multiplier(config, current_reputation) if raw_delta > 0 else raw_delta
++
++
++def completed_trade_reputation_delta(config, guest, offer_ratio):
++    cfg = config["reputation"]
++    satisfaction = satisfaction_for_ratio(config, guest.purpose, offer_ratio)
++    if satisfaction == "HUMILIATED" and guest.kindness in cfg["non_humiliating_kindness"]:
++        satisfaction = "DISSATISFIED"
++    return cfg["satisfaction_deltas"][satisfaction] + cfg["kindness_deltas"].get(guest.kindness, 0)
++
++
++def simulate_fair_value_strategy(config, trials, seed, checkpoints=None):
++    checkpoints = tuple(checkpoints or config["analysis"]["reputation_checkpoints"])
++    if trials < 1 or not checkpoints or min(checkpoints) < 1:
++        raise ValueError("trials and checkpoints must be positive")
++    rng = random.Random(seed)
++    results = {checkpoint: [] for checkpoint in checkpoints}
++    power_states = list(config["price"]["market_power_values"])
++    popularity_states = list(config["price"]["market_popularity_values"])
++    for _ in range(trials):
++        reputation, completed = 0.0, 0
++        market = {name: (rng.choice(power_states), rng.choice(popularity_states)) for name in config["guest"]["classes"]}
++        while completed < max(checkpoints):
++            guest = generate_guest(rng, config, reputation, completed)
++            weapon, _ = generate_weapon(rng, config, guest, market)
++            price = calculate_price(config, guest, weapon, *market[weapon.item_class])
++            if price.appraised_price >= price.asking_price:
++                completed += 1
++                raw_delta = completed_trade_reputation_delta(config, guest, 1.0)
++                reputation += apply_reputation_delta(config, reputation, raw_delta)
++                if completed in results:
++                    results[completed].append(reputation)
++            else:
++                raw_delta = config["reputation"]["failed_scam_delta"] if guest.kindness == "SCAMMER" else float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
++                reputation += apply_reputation_delta(config, reputation, raw_delta)
++    reference = config["analysis"]["successful_trade_reference_per_week"]
++    summaries = {}
++    for checkpoint, values in results.items():
++        median = statistics.median(values)
++        summaries[checkpoint] = {
++            "estimated_week": checkpoint / reference,
++            "mean": statistics.fmean(values), "median": median,
++            "minimum": min(values), "maximum": max(values),
++            "p10": _percentile(values, .1), "p90": _percentile(values, .9),
++            "distributions": customer_progression_distributions(config, median, checkpoint),
++        }
++    return summaries
++
++
++def export_progression_csv(results, path):
++    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
++    rows = []
++    for trades, stats in results.items():
++        row = {"successful_trades": trades, "estimated_week": stats["estimated_week"],
++               "mean_reputation": stats["mean"], "median_reputation": stats["median"],
++               "minimum_reputation": stats["minimum"], "maximum_reputation": stats["maximum"],
++               "p10_reputation": stats["p10"], "p90_reputation": stats["p90"]}
++        row.update({f"{name}_probabilities": json.dumps(weights, sort_keys=True) for name, weights in stats["distributions"].items()})
++        rows.append(row)
++    with path.open("w", newline="", encoding="utf-8") as handle:
++        writer = csv.DictWriter(handle, fieldnames=rows[0]); writer.writeheader(); writer.writerows(rows)
++
++
++def format_reputation_report(results, trials, detailed_checkpoints):
++    lines = [f"FAIR-VALUE PURCHASE REPUTATION ({trials:,} trials)", "Offer = true appraised price; reputation stays float internally; checkpoints count completed trades."]
++    for trades, stats in results.items():
++        lines.append(f"  {trades:>3} trades (~week {stats['estimated_week']:g}): mean={stats['mean']:.2f}, median={stats['median']:.2f}, min={stats['minimum']:.2f}, max={stats['maximum']:.2f}, p10={stats['p10']:.2f}, p90={stats['p90']:.2f}")
++        if trades in detailed_checkpoints:
++            for name, weights in stats["distributions"].items():
++                lines.append(f"    {name}: " + ", ".join(f"{key}={value:.1%}" for key, value in weights.items()))
++    return "\n".join(lines)
+diff --git a/simulator/simulation.py b/simulator/simulation.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..faee72ef401df94fb6bb632eb5076e9a685699cd
+--- /dev/null
++++ b/simulator/simulation.py
+@@ -0,0 +1,35 @@
++import csv
++import random
++from pathlib import Path
++
++from .guest_generator import generate_guest
++from .models import SimulationRecord
++from .price_calculator import calculate_price
++from .weapon_generator import generate_weapon
++
++
++def run_simulation(config, count: int, seed: int):
++    if count < 1:
++        raise ValueError("count must be at least 1")
++    rng = random.Random(seed)
++    records = []
++    power_states = list(config["price"]["market_power_values"])
++    popularity_states = list(config["price"]["market_popularity_values"])
++    # One market snapshot per run, matching a single in-game week.
++    market = {name: (rng.choice(power_states), rng.choice(popularity_states)) for name in config["guest"]["classes"]}
++    for number in range(1, count + 1):
++        guest = generate_guest(rng, config)
++        weapon, known = generate_weapon(rng, config, guest, market)
++        class_power, class_popularity = market[weapon.item_class]
++        price = calculate_price(config, guest, weapon, class_power, class_popularity)
++        records.append(SimulationRecord(number, guest, weapon, known, class_power, class_popularity, price))
++    return records
++
++
++def export_csv(records, path: Path) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    rows = [record.flat_dict() for record in records]
++    with path.open("w", newline="", encoding="utf-8") as handle:
++        writer = csv.DictWriter(handle, fieldnames=rows[0].keys())
++        writer.writeheader()
++        writer.writerows(rows)
+diff --git a/simulator/weapon_generator.py b/simulator/weapon_generator.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..e55eece3ce3f6e625d03d276893b7059175ae03f
+--- /dev/null
++++ b/simulator/weapon_generator.py
+@@ -0,0 +1,104 @@
++from .config import weighted_choice
++from .models import StatLine, WeaponKnownState, WeaponTrueState
++
++
++def _bracket(value: int) -> str:
++    if value == 100:
++        return "STABILITY_100"
++    for floor in (80, 60, 40, 20, 0):
++        if value >= floor:
++            return f"STABILITY_{floor}_PLUS" if floor else "STABILITY_BELOW_20"
++    raise AssertionError("unreachable")
++
++
++def _table_for_value(tables, value):
++    for range_name, table in tables.items():
++        low, high = map(int, range_name.split("-"))
++        if low <= value <= high:
++            return table
++    raise ValueError(f"no configured range contains {value}")
++
++
++def _numeric_line(rng, stat_id, category, grade, reference, ranges, relevant=True):
++    low, high = ranges[grade]
++    return StatLine(stat_id, category, grade, round(reference * rng.uniform(low, high)), "FLAT", relevant)
++
++
++def _stat_lines(rng, cfg, target_class, tier, normal_grade, high_grade, unique_grade):
++    profile = cfg["class_profiles"][target_class]
++    lines = []
++    if normal_grade != "NONE":
++        lines.append(_numeric_line(rng, profile[0], "NORMAL", normal_grade, cfg["normal_reference"][str(tier)], cfg["normal_ranges"]))
++        if normal_grade == "MIXED":
++            other = rng.choice([x for x in cfg["normal_stat_ids"] if x != profile[0]])
++            lines.append(_numeric_line(rng, other, "NORMAL", normal_grade, cfg["normal_reference"][str(tier)], cfg["normal_ranges"], False))
++    if high_grade != "NONE":
++        lines.append(_numeric_line(rng, profile[1], "HIGH", high_grade, cfg["high_reference"][str(tier)], cfg["high_ranges"]))
++    elif rng.random() < cfg["none_high_opposite_chance"]:
++        opposite = "magic_power" if profile[1] == "attack" else "attack"
++        low, high = cfg["irrelevant_high_range"]
++        lines.append(StatLine(opposite, "HIGH", "NONE", round(cfg["high_reference"][str(tier)] * rng.uniform(low, high)), "FLAT", False))
++    if unique_grade != "NONE":
++        stat_id = rng.choice(list(cfg["unique_ranges"]))
++        low, high = cfg["unique_ranges"][stat_id][unique_grade]
++        lines.append(StatLine(stat_id, "UNIQUE", unique_grade, round(rng.uniform(low, high), 1), "PERCENT", True))
++    return lines
++
++
++def generate_weapon(rng, config, guest, market_state):
++    guest_cfg, cfg, numeric = config["guest"], config["weapon"], config["numeric_stats"]
++    compatible = weighted_choice(rng, cfg["compatibility_weights"]) == "compatible"
++    all_types = {weapon for pool in cfg["class_weapon_pools"].values() for weapon in pool}
++    if compatible:
++        generation_mode = "OWN_CLASS"
++        item_type, item_class = rng.choice(cfg["class_weapon_pools"][guest.guest_class]), guest.guest_class
++    else:
++        generation_mode = weighted_choice(rng, cfg["foreign_mode_weights"])
++        item_type = rng.choice(sorted(all_types - set(cfg["class_weapon_pools"][guest.guest_class])))
++        item_class = rng.choice([name for name, pool in cfg["class_weapon_pools"].items() if item_type in pool])
++
++    bracket = next(key for key in guest_cfg["tier_by_level"] if int(key.split("-")[0]) <= guest.level <= int(key.split("-")[1]))
++    tier = int(weighted_choice(rng, guest_cfg["tier_by_level"][bracket]))
++    if generation_mode == "FOREIGN_RAW":
++        normal_grade = weighted_choice(rng, cfg["foreign_raw_normal_stat_weights"])
++        high_grade = weighted_choice(rng, cfg["foreign_raw_high_stat_weights"])
++        unique = weighted_choice(rng, cfg["foreign_raw_unique_weights"])
++        reinforce, refining, amp_count, amplification = "UNENHANCED", 0, "UNAPPLIED", "UNAPPLIED"
++        amp_lines = []
++    else:
++        normal_grade = weighted_choice(rng, guest_cfg["stat_grade_by_power"][guest.power])
++        high_roll = weighted_choice(rng, guest_cfg["stat_grade_by_power"][guest.power])
++        high_grade = {"MIXED": "LOW"}.get(high_roll, high_roll)
++        unique = weighted_choice(rng, guest_cfg["unique_by_tendency"][guest.tendency])
++        reinforce = weighted_choice(rng, guest_cfg["reinforce_by_tendency"][guest.tendency])
++        band = weighted_choice(rng, guest_cfg["refining_band_by_achievement"][guest.achievement])
++        refining = rng.randint(*map(int, band.split("-")))
++        amp_count = weighted_choice(rng, guest_cfg["amplification_count_by_title"][guest.title])
++        quality = weighted_choice(rng, cfg["amplification_quality_weights"])
++        amplification = amp_count if amp_count in ("UNAPPLIED", "ZERO_LINE") else f"{amp_count}_{quality}"
++        amp_lines = []
++        count_words = {"ONE_LINE": 1, "TWO_LINE": 2, "THREE_LINE": 3}
++        for _ in range(count_words.get(amp_count, 0)):
++            stat_id = rng.choice(numeric["normal_stat_ids"])
++            low, high = numeric["amplification_ranges"][quality]
++            value = round(numeric["normal_reference"][str(tier)] * rng.uniform(low, high))
++            amp_lines.append(StatLine(stat_id, "AMPLIFICATION", quality, value, "FLAT", stat_id == numeric["class_profiles"][item_class][0]))
++
++    load_cfg = cfg["processing_load"]
++    processing_load = (load_cfg["reinforcement"][reinforce] + refining * load_cfg["refining_level_multiplier"] + load_cfg["amplification"][amp_count])
++    class_power, class_popularity = market_state[item_class]
++    market_load = cfg["market_processing_load"]
++    popularity_load = market_load["class_popularity"][class_popularity]
++    class_power_load = market_load["class_power"][class_power]
++    effective_processing_load = processing_load + popularity_load + class_power_load
++    stability_table = _table_for_value(cfg["stability_by_processing_load"], effective_processing_load)
++    stability_range = weighted_choice(rng, stability_table)
++    stability = rng.randint(*map(int, stability_range.split("-")))
++    weapon = WeaponTrueState(
++        item_type, item_class, compatible, generation_mode, tier, normal_grade, high_grade,
++        weighted_choice(rng, cfg["special_stat_weights"]), unique, reinforce, refining,
++        amplification, processing_load, popularity_load, class_power_load, effective_processing_load,
++        stability, _bracket(stability),
++        tuple(_stat_lines(rng, numeric, item_class, tier, normal_grade, high_grade, unique)), tuple(amp_lines),
++    )
++    return weapon, WeaponKnownState()
+diff --git a/tests/__init__.py b/tests/__init__.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..97741ffe523843ff4bf6a70bc55599c8ff2f032c
+--- /dev/null
++++ b/tests/__init__.py
+@@ -0,0 +1 @@
++"""Simulator test suite."""
+diff --git a/tests/test_simulator.py b/tests/test_simulator.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..e45aeee8206eefdde9b9b9feefe6e6c0637ac0db
+--- /dev/null
++++ b/tests/test_simulator.py
+@@ -0,0 +1,199 @@
++import copy
++import random
++import unittest
++from dataclasses import replace
++
++from simulator.config import ConfigError, load_config, validate_config
++from simulator.buyer_fit import calculate_buyer_fit, choose_inventory_item, interest_band
++from simulator.economy_simulation import InventoryItem, revalue_item, roll_market, run_economy_trial
++from simulator.guest_generator import generate_guest
++from simulator.models import Guest, WeaponTrueState
++from simulator.price_calculator import calculate_price
++from simulator.progression import interpolated_weights
++from simulator.reputation_simulation import apply_reputation_delta, satisfaction_for_ratio, simulate_fair_value_strategy
++from simulator.simulation import run_simulation
++
++
++class SimulatorTests(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        cls.config = load_config()
++
++    def test_seed_is_reproducible(self):
++        first = [x.flat_dict() for x in run_simulation(self.config, 30, 42)]
++        second = [x.flat_dict() for x in run_simulation(self.config, 30, 42)]
++        self.assertEqual(first, second)
++
++    def test_probability_validation_rejects_bad_sum(self):
++        config = copy.deepcopy(self.config)
++        config["weapon"]["compatibility_weights"]["compatible"] = 0.7
++        with self.assertRaises(ConfigError):
++            validate_config(config)
++
++    def test_required_uniform_rolls_and_compatibility_are_sane(self):
++        records = run_simulation(self.config, 30_000, 77)
++        for getter, expected in [
++            (lambda x: x.guest.guest_class, 1 / 6), (lambda x: x.guest.tendency, 1 / 4),
++            (lambda x: x.guest.knowledge, 1 / 3), (lambda x: x.guest.purpose, 1 / 3),
++        ]:
++            counts = {}
++            for record in records:
++                counts[getter(record)] = counts.get(getter(record), 0) + 1
++            self.assertTrue(all(abs(count / len(records) - expected) < 0.02 for count in counts.values()))
++        compatible = sum(record.weapon.compatible for record in records) / len(records)
++        self.assertAlmostEqual(compatible, 0.8, delta=0.02)
++
++    def test_price_formula_and_floor(self):
++        guest = Guest("NORMAL", "WARRIOR", 1, "NORMAL", "VERY_CARELESS", "NONE", "NONE", "NONE", "GREEDY_SELLING")
++        weapon = WeaponTrueState(
++            item_type="axe", item_class="WARRIOR", compatible=True, generation_mode="OWN_CLASS", tier=1,
++            normal_stat_grade="NONE", high_stat_grade="NONE", special_stat_grade="NONE_RELEVANT",
++            unique_stat_grade="NONE", reinforcement_grade="BAD", refining_level=1,
++            amplification_grade="ZERO_LINE", processing_load=1, popularity_load=0,
++            class_power_load=0, effective_processing_load=1, stability=0,
++            stability_bracket="STABILITY_BELOW_20", stat_lines=(), amplification_lines=(),
++        )
++        result = calculate_price(self.config, guest, weapon, "WEAK", "UNPOPULAR")
++        self.assertEqual(result.appraised_price, 100)
++        self.assertEqual(result.asking_price, 100)
++
++    def test_stability_depends_on_processing_load_table(self):
++        config = copy.deepcopy(self.config)
++        for table in config["weapon"]["stability_by_processing_load"].values():
++            table.update({key: 0.0 for key in table})
++            table["100-100"] = 1.0
++        records = run_simulation(config, 100, 9)
++        self.assertTrue(all(record.weapon.stability == 100 for record in records))
++        self.assertTrue(all(record.weapon.effective_processing_load >= record.weapon.processing_load for record in records))
++
++    def test_satisfaction_boundaries_match_spec(self):
++        self.assertEqual(satisfaction_for_ratio(self.config, "EMERGENCY_CASH", 0.4), "SATISFIED")
++        self.assertEqual(satisfaction_for_ratio(self.config, "UPGRADE_PURCHASE", 0.5), "DISSATISFIED")
++        self.assertEqual(satisfaction_for_ratio(self.config, "GREEDY_SELLING", 1.0), "SATISFIED")
++
++    def test_reputation_strategy_is_seeded_and_has_checkpoints(self):
++        first = simulate_fair_value_strategy(self.config, 20, 123)
++        second = simulate_fair_value_strategy(self.config, 20, 123)
++        self.assertEqual(first, second)
++        self.assertEqual(set(first), {10, 25, 30, 50, 60, 100, 120, 200, 240})
++
++    def test_reputation_decay_only_reduces_positive_changes(self):
++        self.assertEqual(apply_reputation_delta(self.config, 0, 6), 6)
++        self.assertEqual(apply_reputation_delta(self.config, 300, 6), 3)
++        self.assertAlmostEqual(apply_reputation_delta(self.config, 900, 6), 1.2)
++        self.assertEqual(apply_reputation_delta(self.config, 900, -5), -5)
++
++    def test_progression_quality_is_monotonic_and_keeps_low_categories(self):
++        score_tables = {
++            "guest_level": {"1-10": 0, "11-30": 1, "31-50": 2, "51-70": 3, "71-90": 4, "91-120": 5},
++            "guest_power": {"VERY_LOW": 0, "LOW": 1, "NORMAL": 2, "HIGH": 3, "VERY_HIGH": 4},
++        }
++        for name, scores in score_tables.items():
++            table = self.config["progression"]["reputation"][name]
++            qualities = []
++            for value in (0, 100, 250, 500, 800):
++                weights = interpolated_weights(table, value)
++                qualities.append(sum(weights[key] * scores[key] for key in scores))
++                self.assertTrue(all(weight > 0 for weight in weights.values()))
++            self.assertEqual(qualities, sorted(qualities))
++        kindness = self.config["progression"]["reputation"]["guest_kindness"]
++        low, high = interpolated_weights(kindness, 0), interpolated_weights(kindness, 800)
++        self.assertGreater(high["GENEROUS"], low["GENEROUS"])
++        self.assertLessEqual(high["RUDE"] + high["SCAMMER"], low["RUDE"] + low["SCAMMER"])
++
++    def test_trade_progression_quality_is_monotonic(self):
++        scores = {"guest_title": {"NONE": 0, "C": 1, "B": 2, "A": 3, "S": 4},
++                  "guest_achievement": {"NONE": 0, "SOME": 1, "GOOD": 2, "VERY_GOOD": 3}}
++        for name, mapping in scores.items():
++            table = self.config["progression"]["trade_count"][name]
++            values = [sum(interpolated_weights(table, count)[key] * score for key, score in mapping.items()) for count in (0, 25, 50, 100, 200, 400)]
++            self.assertEqual(values, sorted(values))
++
++    def test_generation_modes_and_foreign_raw_invariants(self):
++        records = run_simulation(self.config, 30_000, 901)
++        counts = {mode: sum(r.weapon.generation_mode == mode for r in records) for mode in ("OWN_CLASS", "FOREIGN_RAW", "FOREIGN_WORKED")}
++        self.assertAlmostEqual(counts["OWN_CLASS"] / len(records), .8, delta=.02)
++        self.assertAlmostEqual(counts["FOREIGN_RAW"] / (counts["FOREIGN_RAW"] + counts["FOREIGN_WORKED"]), .9, delta=.02)
++        raw = [r for r in records if r.weapon.generation_mode == "FOREIGN_RAW"]
++        self.assertTrue(all((not r.weapon.compatible and r.weapon.item_class != r.guest.guest_class and r.weapon.refining_level == 0 and r.weapon.reinforcement_grade == "UNENHANCED" and r.weapon.amplification_grade == "UNAPPLIED") for r in raw))
++        self.assertEqual(self.config["price"]["reinforce_values"]["UNENHANCED"], .1)
++
++    def test_market_pressure_is_in_effective_load(self):
++        for record in run_simulation(self.config, 1000, 88):
++            weapon = record.weapon
++            expected_popularity = self.config["weapon"]["market_processing_load"]["class_popularity"][record.class_popularity]
++            expected_power = self.config["weapon"]["market_processing_load"]["class_power"][record.class_power]
++            self.assertEqual(weapon.popularity_load, expected_popularity)
++            self.assertEqual(weapon.class_power_load, expected_power)
++            self.assertEqual(weapon.effective_processing_load, weapon.processing_load + expected_popularity + expected_power)
++
++    def test_higher_effective_load_has_lower_configured_stability(self):
++        tables = self.config["weapon"]["stability_by_processing_load"]
++        midpoints = {"0-19": 9.5, "20-39": 29.5, "40-59": 49.5, "60-79": 69.5, "80-99": 89.5, "100-100": 100}
++        expected = [sum(midpoints[band] * probability for band, probability in table.items()) for table in tables.values()]
++        self.assertEqual(expected, sorted(expected, reverse=True))
++
++    def test_visitor_roles_force_first_four_then_balance(self):
++        rng = random.Random(12)
++        guests = [generate_guest(rng, self.config, visitor_number=index) for index in range(1, 10005)]
++        self.assertTrue(all(guest.role == "SELL_TO_SHOP" for guest in guests[:4]))
++        seller_rate = sum(guest.role == "SELL_TO_SHOP" for guest in guests[4:]) / 10000
++        self.assertAlmostEqual(seller_rate, .5, delta=.02)
++
++    def _buyer_and_weapons(self):
++        records = run_simulation(self.config, 1000, 55)
++        first = records[0]
++        buyer = replace(first.guest, role="BUY_FROM_SHOP", guest_class=first.weapon.item_class,
++                        preferred_weapon_type=first.weapon.item_type)
++        compatible = [record.weapon for record in records if record.weapon.item_class == buyer.guest_class]
++        incompatible = next(record.weapon for record in records if record.weapon.item_class != buyer.guest_class)
++        return buyer, compatible, incompatible
++
++    def test_buyer_fit_filters_class_and_rewards_preference(self):
++        buyer, weapons, incompatible = self._buyer_and_weapons()
++        preferred = calculate_buyer_fit(self.config, buyer, weapons[0])
++        nonpreferred = calculate_buyer_fit(self.config, replace(buyer, preferred_weapon_type="not_this"), weapons[0])
++        self.assertIsNone(calculate_buyer_fit(self.config, buyer, incompatible))
++        self.assertGreater(preferred.score, nonpreferred.score)
++        self.assertTrue(0 <= preferred.score <= 100)
++
++    def test_quality_fit_is_non_decreasing_and_best_item_is_selected(self):
++        buyer, weapons, _ = self._buyer_and_weapons()
++        base = weapons[0]
++        scores = [calculate_buyer_fit(self.config, buyer, replace(base, normal_stat_grade=grade)).score
++                  for grade in ("NONE", "MIXED", "ADEQUATE", "EXCELLENT")]
++        self.assertEqual(scores, sorted(scores))
++        items = [InventoryItem(i, weapon, buyer, 1, 1, 100, 100, 100, 120) for i, weapon in enumerate(weapons[:20], 1)]
++        selected, fit, failure = choose_inventory_item(self.config, random.Random(4), buyer, items)
++        self.assertIsNone(failure if fit.score >= 40 else selected)
++        self.assertEqual(fit.score, max(calculate_buyer_fit(self.config, buyer, item.weapon).score for item in items))
++
++    def test_interest_haggles_decrease_with_fit(self):
++        bands = self.config["economy"]["interest_bands"]
++        self.assertEqual([band["haggles"] for band in bands], sorted((band["haggles"] for band in bands), reverse=False))
++        self.assertIsNone(interest_band(self.config, 39.999))
++
++    def test_economy_transactions_move_cash_inventory_and_trade_count(self):
++        result = run_economy_trial(self.config, 123, weeks=2)
++        purchases = [row for row in result["transactions"] if row["transaction_type"] == "BUY_FROM_CUSTOMER"]
++        sales = [row for row in result["transactions"] if row["transaction_type"] == "SELL_TO_CUSTOMER"]
++        self.assertTrue(all(row["cash_after"] < row["cash_before"] for row in purchases))
++        self.assertTrue(all(row["cash_after"] > row["cash_before"] for row in sales))
++        self.assertEqual(result["state"].shop_trade_count, len(purchases) + len(sales))
++
++    def test_market_change_revalues_inventory(self):
++        result = run_economy_trial(self.config, 321, weeks=1)
++        item = result["inventory"][0]
++        weak = {name: ("WEAK", "UNPOPULAR") for name in self.config["guest"]["classes"]}
++        strong = {name: ("STRONG", "POPULAR") for name in self.config["guest"]["classes"]}
++        self.assertGreater(revalue_item(self.config, item, strong), revalue_item(self.config, item, weak))
++
++    def test_economy_seed_reproducibility(self):
++        first = run_economy_trial(self.config, 777, weeks=2)
++        second = run_economy_trial(self.config, 777, weeks=2)
++        self.assertEqual(first["checkpoints"], second["checkpoints"])
++        self.assertEqual(first["transactions"], second["transactions"])
++
++
++if __name__ == "__main__":
++    unittest.main()
