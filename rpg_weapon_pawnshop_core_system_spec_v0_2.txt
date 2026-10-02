@@ -1,0 +1,1917 @@
+RPG WEAPON PAWNSHOP - CORE SYSTEM SPECIFICATION
+Version: Draft 0.2
+Purpose: Codex implementation handoff
+Target: Godot 4.6.1 / GDScript prototype
+Scope: Weapon-only prototype / guest generation / weapon generation / appraisal / purchase negotiation / reputation loop
+
+This file supersedes Draft 0.1.
+
+======================================================================
+0. IMPLEMENTATION INTENT
+======================================================================
+
+This is a fantasy RPG weapon pawnshop game.
+
+Core loop:
+1) Generate one guest.
+2) Generate one weapon owned by that guest.
+3) Store the weapon's TRUE internal data.
+4) Show only player-known information.
+5) The player uses appraisal actions to reveal hidden information.
+6) The system calculates the weapon's TRUE current appraised market price.
+7) The guest calculates a customer asking price from purpose + market knowledge.
+8) The player chooses a purchase offer.
+9) The guest accepts / counters / rejects according to purpose and negotiation rules.
+10) On transaction completion, calculate satisfaction.
+11) Update shop reputation and successful trade count.
+12) These shop-state values affect future guest quality.
+
+Prototype priority:
+- Data flow must be correct and testable.
+- Balance values must be data-driven and easy to replace.
+- Build a working simulation before polished UI/art.
+
+OUT OF SCOPE FOR FIRST PROTOTYPE:
+- Armor and accessories as tradable items.
+- Ego weapons, named weapons, cursed weapons, discontinued weapons.
+- Shop decorations.
+- Full resale-to-buyer system.
+- Full order/request system.
+- Story content.
+
+IMPORTANT:
+Do not invent new mechanics just to fill missing balance details.
+For unfinished numeric tables, use explicitly marked TEMPORARY prototype config values.
+
+Use English-only filenames and paths.
+Use snake_case for code variables and data keys.
+
+
+======================================================================
+1. CORE TERMINOLOGY: VALUE VS PRICE VS PLAYER INPUT
+======================================================================
+
+The implementation MUST separate the following concepts.
+
+A) INTERNAL VALUE MODIFIERS
+These are dimensionless decimal modifiers used by the price formula.
+Examples:
+value_normal_stat = +0.50
+value_reinforce = -0.20
+value_class_popularity = +0.20
+
+B) TRUE ITEM DATA
+The actual stats and state owned by the generated weapon.
+Examples:
+actual_strength = 42
+actual_attack = 67
+actual_crit_chance = 7.4
+actual_refining_level = 8
+actual_stability = 46
+
+C) PLAYER-KNOWN DATA
+What the player has successfully discovered through appraisal.
+This is separate from TRUE item data.
+
+D) PRICES
+Gold amounts.
+
+base_price
+    Tier-based base price before item modifiers.
+
+true_appraised_price
+    The system's hidden true current market appraisal of the weapon.
+    This is NOT automatically shown to the player.
+
+customer_asking_price
+    The price the guest asks for.
+
+player_purchase_offer
+    The amount chosen/input by the player.
+
+final_purchase_price
+    Equals player_purchase_offer only if the guest accepts it.
+
+IMPORTANT:
+There is NO variable named player_appraisal_value in the first prototype.
+The player judges value by looking at revealed item information and choosing an offer.
+The system's true appraisal and the player's judgment must never be merged.
+
+
+======================================================================
+2. HIGH-LEVEL DATA FLOW
+======================================================================
+
+SHOP STATE
+    shop_reputation
+    shop_trade_count
+        |
+        v
+GUEST GENERATION
+    guest_kindness
+    guest_class
+    guest_level
+    guest_power
+    guest_tendency
+    guest_achievement
+    guest_title
+    guest_knowledge
+    guest_purpose
+        |
+        v
+WEAPON GENERATION
+    is_class_compatible
+    item_type
+    item_target_class
+    item_tier
+    internal appraisal grades
+    true numeric stat lines
+    reinforcement
+    refining
+    amplification
+    true stability
+        |
+        v
+TRUE VALUE CALCULATION
+    true_item_value_modifier
+    stability_multiplier
+    true_appraised_price
+        |
+        +--------------------+
+        |                    |
+        v                    v
+PLAYER APPRAISAL       CUSTOMER PRICING
+player_known_state     customer_asking_price
+        |                    |
+        +----------+---------+
+                   v
+             NEGOTIATION
+        player_purchase_offer
+        accept / counter / reject
+        guest_satisfaction
+        final_purchase_price
+                   |
+                   v
+              SHOP UPDATE
+        shop_reputation
+        shop_trade_count
+
+
+======================================================================
+3. STORE STATE
+======================================================================
+
+3.1 shop_reputation
+-------------------
+Type: int
+Initial value: 0
+
+Meaning:
+Long-term reputation of the shop.
+
+Effects:
+- Higher shop_reputation increases the probability of higher guest_level.
+- Higher shop_reputation increases the probability of higher guest_power.
+- It does NOT directly modify weapon price.
+
+Base reputation changes after a completed negotiation result:
+VERY_SATISFIED = +6
+SATISFIED      = +2
+DISSATISFIED   = -4
+HUMILIATED     = -8
+
+If player refuses / does not purchase the offered item:
+50% -> 0 reputation
+50% -> -2 reputation
+
+Future order system, NOT required for initial prototype:
+Order completed: +20
+Order failed: 50% -> -10, 50% -> -30
+
+
+3.2 shop_trade_count
+--------------------
+Type: int
+Initial value: 0
+
+Meaning:
+Total count of successfully completed purchase transactions.
+
+Increment:
++1 only when a purchase succeeds.
+
+Effects:
+- Higher shop_trade_count increases probability of higher guest_title.
+- Higher shop_trade_count increases probability of higher guest_achievement.
+
+Do NOT call this shop_sell_count.
+
+
+======================================================================
+4. RANDOMNESS POLICY
+======================================================================
+
+All random generation must be seedable for debugging.
+Use weighted_choice() for weighted tables.
+Use uniform_choice() for exact equal-probability categories.
+
+Validate all probability tables during development.
+- No negative weight.
+- Sum should be 1.0 within a small floating-point epsilon.
+- Log invalid tables instead of silently accepting them.
+
+EXACT UNIFORM RANDOM VARIABLES:
+
+4.1 guest_class
+6 possible values, exactly equal probability:
+WARRIOR = 1/6
+MAGE    = 1/6
+ROGUE   = 1/6
+ARCHER  = 1/6
+GUNNER  = 1/6
+CLERIC  = 1/6
+
+4.2 guest_tendency
+4 possible values, exactly equal probability:
+VERY_CARELESS      = 25%
+SLIGHTLY_CARELESS  = 25%
+SLIGHTLY_CAUTIOUS  = 25%
+VERY_CAUTIOUS      = 25%
+
+4.3 guest_knowledge
+3 possible values, exactly equal probability:
+NONE = 1/3
+SOME = 1/3
+HIGH = 1/3
+
+4.4 guest_purpose
+3 possible values, exactly equal probability:
+EMERGENCY_CASH   = 1/3
+UPGRADE_PURCHASE = 1/3
+GREEDY_SELLING   = 1/3
+
+IMPORTANT:
+These four variables are independent uniform rolls unless a future design explicitly changes them.
+Do not make their weights depend on shop reputation or trade count.
+
+NOT UNIFORM BY DESIGN:
+- guest_level depends on shop_reputation.
+- guest_power depends on shop_reputation.
+- guest_title depends on shop_trade_count.
+- guest_achievement depends on shop_trade_count.
+- guest_kindness distribution is not finalized yet.
+
+
+======================================================================
+5. GUEST VARIABLES
+======================================================================
+
+5.1 guest_kindness
+------------------
+Possible values:
+GENEROUS
+NORMAL
+ARGUMENTATIVE
+RUDE
+SCAMMER
+
+GENEROUS:
+- Warm dialogue.
+- Cannot end in HUMILIATED.
+- Final reputation delta receives +2.
+
+NORMAL:
+- Neutral/friendly dialogue.
+- Cannot end in HUMILIATED.
+
+ARGUMENTATIVE:
+- Complaining / argumentative dialogue.
+- No numeric modifier currently.
+
+RUDE:
+- Unfriendly dialogue.
+- Final reputation delta receives -2.
+
+SCAMMER:
+- Special customer behavior.
+- Can refuse normal tool appraisal according to future scam rules.
+- Wants at least 150% of true_appraised_price.
+- If scam demand is not met, transaction is rejected.
+- Current failed-scam reputation effect: -5.
+
+IMPORTANT:
+SCAMMER does not alter true_appraised_price.
+It alters customer behavior and asking-price logic.
+
+Generation probability for guest_kindness is TODO.
+Store it in config.
+
+
+5.2 guest_class
+---------------
+See exact uniform distribution in Section 4.
+
+Class weapon pools:
+
+WARRIOR:
+- one_handed_sword
+- greatsword
+- spear
+- axe
+
+MAGE:
+- staff
+- wand
+- grimoire
+
+ROGUE:
+- dagger
+- throwing_weapon
+
+ARCHER:
+- bow
+- crossbow
+
+GUNNER:
+- gun
+- heavy_weapon
+
+CLERIC:
+- staff
+- gauntlet
+- mace
+
+Unique weapon types = 15.
+Staff is shared by MAGE and CLERIC.
+
+
+5.3 guest_level
+---------------
+Meaning:
+Determines item_tier probability.
+
+Tier table:
+
+Lv 1-10:
+T1 80%
+T2 20%
+
+Lv 11-30:
+T1 60%
+T2 30%
+T3 10%
+
+Lv 31-50:
+T1 20%
+T2 40%
+T3 40%
+
+Lv 51-70:
+T2 20%
+T3 40%
+T4 40%
+
+Lv 71-90:
+T3 30%
+T4 50%
+T5 20%
+
+Lv 91-120:
+T4 60%
+T5 40%
+
+The table converting shop_reputation into guest_level bracket weights is TODO.
+Keep configurable.
+
+
+5.4 guest_power
+---------------
+Meaning:
+Affects normal/high stat grade only for weapons usable by the guest.
+
+Possible values:
+VERY_LOW
+LOW
+NORMAL
+HIGH
+VERY_HIGH
+
+NORMAL STAT GRADE probabilities:
+
+VERY_LOW:
+NONE 30%
+MIXED 50%
+ADEQUATE 20%
+EXCELLENT 0%
+
+LOW:
+NONE 10%
+MIXED 40%
+ADEQUATE 40%
+EXCELLENT 10%
+
+NORMAL:
+NONE 0%
+MIXED 30%
+ADEQUATE 50%
+EXCELLENT 20%
+
+HIGH:
+NONE 0%
+MIXED 10%
+ADEQUATE 40%
+EXCELLENT 50%
+
+VERY_HIGH:
+NONE 0%
+MIXED 0%
+ADEQUATE 20%
+EXCELLENT 80%
+
+HIGH STAT GRADE uses the same probability shape in the first prototype,
+but uses HIGH_STAT grade names:
+NONE / LOW / ADEQUATE / EXCELLENT.
+
+Mapping for the shared middle category:
+NORMAL_STAT MIXED <-> HIGH_STAT LOW
+
+The normal-stat and high-stat rolls are independent.
+
+If the weapon is NOT usable by the guest:
+- guest_power does NOT affect stat quality.
+- Use universal incompatible-loot tables instead.
+- Those tables are TODO and must be configurable.
+
+The shop_reputation -> guest_power weight table is TODO.
+
+
+5.5 guest_tendency
+------------------
+See Section 4 for exact 25% generation probability per tendency.
+
+Controls:
+- item_unique_stat_grade
+- item_reinforce_grade
+
+UNIQUE STAT:
+
+VERY_CARELESS:
+NONE 60%
+LOW 40%
+HIGH 0%
+
+SLIGHTLY_CARELESS:
+NONE 40%
+LOW 40%
+HIGH 20%
+
+SLIGHTLY_CAUTIOUS:
+NONE 20%
+LOW 40%
+HIGH 40%
+
+VERY_CAUTIOUS:
+NONE 0%
+LOW 40%
+HIGH 60%
+
+REINFORCEMENT:
+
+VERY_CARELESS:
+PERFECT 10%
+GOOD 30%
+MIXED 40%
+BAD 20%
+
+SLIGHTLY_CARELESS:
+PERFECT 20%
+GOOD 40%
+MIXED 30%
+BAD 10%
+
+SLIGHTLY_CAUTIOUS:
+PERFECT 30%
+GOOD 50%
+MIXED 20%
+BAD 0%
+
+VERY_CAUTIOUS:
+PERFECT 60%
+GOOD 40%
+MIXED 0%
+BAD 0%
+
+
+5.6 guest_achievement
+---------------------
+Possible values:
+NONE
+SOME
+GOOD
+VERY_GOOD
+
+Controls item_refining_level band.
+
+NONE:
+1-4 = 80%
+5-7 = 20%
+8-10 = 0%
+
+SOME:
+1-4 = 60%
+5-7 = 35%
+8-10 = 5%
+
+GOOD:
+1-4 = 40%
+5-7 = 50%
+8-10 = 10%
+
+VERY_GOOD:
+1-4 = 30%
+5-7 = 50%
+8-10 = 20%
+
+Within a selected band, choose each refining level uniformly.
+Example: selected 5-7 -> 5, 6, 7 each have 1/3 probability.
+
+shop_trade_count -> guest_achievement weights are TODO.
+
+
+5.7 guest_title
+---------------
+Possible values:
+NONE
+C
+B
+A
+S
+
+Controls amplification line-count category.
+
+NONE:
+UNAPPLIED 40%
+ZERO_LINE 40%
+ONE_LINE 20%
+TWO_LINE 0%
+THREE_LINE 0%
+
+C:
+UNAPPLIED 20%
+ZERO_LINE 40%
+ONE_LINE 30%
+TWO_LINE 10%
+THREE_LINE 0%
+
+B:
+UNAPPLIED 20%
+ZERO_LINE 10%
+ONE_LINE 40%
+TWO_LINE 20%
+THREE_LINE 10%
+
+A:
+UNAPPLIED 10%
+ZERO_LINE 0%
+ONE_LINE 30%
+TWO_LINE 40%
+THREE_LINE 20%
+
+S:
+UNAPPLIED 0%
+ZERO_LINE 0%
+ONE_LINE 0%
+TWO_LINE 40%
+THREE_LINE 60%
+
+shop_trade_count -> guest_title weights are TODO.
+LOW/HIGH amplification line-quality sub-roll is TODO.
+
+
+5.8 guest_knowledge
+-------------------
+See Section 4 for exact 1/3 generation probability.
+
+Meaning:
+Knowledge of current market prices.
+Does NOT modify true weapon value.
+Only modifies customer asking price.
+
+knowledge_price_multiplier:
+NONE = 1.00
+SOME = 1.10
+HIGH = 1.20
+
+
+5.9 guest_purpose
+-----------------
+See Section 4 for exact 1/3 generation probability.
+
+EMERGENCY_CASH:
+purpose_price_multiplier = 0.50
+negotiation_attempts = 1
+never_humiliated = true
+
+Satisfaction by offer_ratio = player_purchase_offer / true_appraised_price:
+ratio < 0.40             -> DISSATISFIED
+0.40 <= ratio <= 0.50    -> SATISFIED
+ratio > 0.50             -> VERY_SATISFIED
+
+UPGRADE_PURCHASE:
+purpose_price_multiplier = 0.80
+negotiation_attempts = 2
+
+ratio < 0.50             -> HUMILIATED
+0.50 <= ratio <= 0.60    -> DISSATISFIED
+0.60 < ratio <= 0.80     -> SATISFIED
+ratio > 0.80             -> VERY_SATISFIED
+
+GREEDY_SELLING:
+purpose_price_multiplier = 1.00
+negotiation_attempts = 2
+
+ratio < 0.70             -> HUMILIATED
+0.70 <= ratio <= 0.80    -> DISSATISFIED
+0.80 < ratio <= 1.00     -> SATISFIED
+ratio > 1.00             -> VERY_SATISFIED
+
+NOTE:
+GREEDY_SELLING is a prototype simplification combining sale purpose and price attitude.
+It can later be split into separate variables.
+
+
+======================================================================
+6. WEAPON COMPATIBILITY AND TARGET CLASS
+======================================================================
+
+6.1 compatibility roll
+----------------------
+After guest_class is generated:
+
+80% -> weapon is usable by guest_class
+20% -> weapon is not usable by guest_class
+
+Variable:
+is_class_compatible: bool
+
+If true:
+- Select item_type uniformly from guest_class weapon pool.
+- item_target_class = guest_class.
+
+If false:
+- Select item_type uniformly from all weapon types NOT usable by guest_class.
+- Determine all classes that can use the selected item_type.
+- Select item_target_class uniformly from those compatible classes.
+
+Why item_target_class exists:
+- class_power / class_popularity must refer to the class whose market uses the item.
+- shared weapon types such as staff need an explicit target class.
+- actual relevant stats also depend on the intended class build.
+
+For incompatible weapons:
+- guest_power does not define their stat quality.
+- other guest progression variables may also eventually use alternate loot rules.
+- Keep incompatible-item generation modular.
+
+
+======================================================================
+7. WEAPON TIER AND BASE PRICE
+======================================================================
+
+item_tier is generated from guest_level.
+
+base_price:
+T1 = 1,000 gold
+T2 = 2,000 gold
+T3 = 5,000 gold
+T4 = 15,000 gold
+T5 = 35,000 gold
+
+
+======================================================================
+8. INTERNAL APPRAISAL GRADES AND VALUE MODIFIERS
+======================================================================
+
+These grades are INTERNAL BALANCE CATEGORIES.
+They should normally NOT be printed directly to the player as the final item description.
+The player should see concrete RPG-style stats after appraisal.
+
+
+8.1 normal stat grade
+---------------------
+Internal grade:
+EXCELLENT
+ADEQUATE
+MIXED
+NONE
+
+Value modifier:
+EXCELLENT = +0.50
+ADEQUATE  = +0.20
+MIXED     = +0.05
+NONE      = -0.50
+
+Refining coefficient:
+EXCELLENT = 1.10
+ADEQUATE  = 0.80
+MIXED     = 0.50
+NONE      = 0.30
+
+Variables:
+item_normal_stat_grade
+value_normal_stat
+coefficient_normal_stat
+
+
+8.2 high stat grade
+-------------------
+Internal grade:
+EXCELLENT
+ADEQUATE
+LOW
+NONE
+
+Value modifier:
+EXCELLENT = +1.00
+ADEQUATE  = +0.40
+LOW       = +0.10
+NONE      = -0.80
+
+Refining coefficient:
+EXCELLENT = 1.30
+ADEQUATE  = 0.90
+LOW       = 0.55
+NONE      = 0.20
+
+Variables:
+item_high_stat_grade
+value_high_stat
+coefficient_high_stat
+
+
+8.3 special stat appraisal
+--------------------------
+Possible internal appraisal states:
+HIGH_RELEVANT
+RELEVANT
+NONE_RELEVANT
+
+Value:
+HIGH_RELEVANT = +0.30
+RELEVANT      = +0.10
+NONE_RELEVANT = -0.10
+
+Variable:
+value_special_stat
+
+Exact generation source is TODO.
+Do not secretly bind this to another guest variable.
+
+
+8.4 unique stat grade
+---------------------
+HIGH = +0.50
+LOW  = +0.30
+NONE = 0.00
+
+Variable:
+value_unique_stat
+
+Generated from guest_tendency.
+
+
+8.5 reinforcement grade
+-----------------------
+PERFECT = +0.80
+GOOD    = +0.40
+MIXED   = -0.20
+BAD     = -0.50
+
+Variable:
+value_reinforce
+
+Generated from guest_tendency.
+
+
+8.6 refining
+------------
+item_refining_level: integer 0-10
+
+Base value_refining:
+0  = 0.00
+1  = 0.05
+2  = 0.10
+3  = 0.15
+4  = 0.25
+5  = 0.50
+6  = 0.80
+7  = 1.10
+8  = 1.50
+9  = 2.00
+10 = 3.00
+
+Effective refining contribution:
+
+effective_refining_value
+=
+value_refining
+*
+(
+    0.4 * coefficient_normal_stat
+    +
+    0.6 * coefficient_high_stat
+)
+
+Do NOT add value_refining separately again.
+
+
+8.7 amplification appraisal value
+---------------------------------
+Internal final amplification appraisal grade:
+UNAPPLIED       = +0.20
+ZERO_LINE       = -0.50
+ONE_LINE_LOW    = -0.40
+ONE_LINE_HIGH   = -0.20
+TWO_LINE_LOW    = 0.00
+TWO_LINE_HIGH   = +0.20
+THREE_LINE_LOW  = +0.40
+THREE_LINE_HIGH = +1.00
+
+Variable:
+value_amplification
+
+
+======================================================================
+9. CONCRETE RPG STAT SYSTEM: TRUE DATA VS PLAYER-KNOWN DATA
+======================================================================
+
+9.1 design rule
+---------------
+
+Internal words such as EXCELLENT, ADEQUATE, LOW, MIXED and HIGH are for generation,
+balance and price calculation.
+
+Normal player-facing item UI should instead show concrete RPG-style information such as:
+
+STR +42
+Attack +67
+Critical Chance +7.4%
+Refining +8
+Stability 46%
+
+The exact numeric stat is generated FROM the internal grade and item tier.
+Therefore:
+
+internal grade -> true numeric stat -> appraisal reveal -> player-known stat
+
+The true numeric stat and the player-known stat are separate data.
+
+IMPORTANT PRICE RULE:
+The current price formula uses the INTERNAL GRADE value modifiers.
+Do NOT also add the generated numeric stat to the price formula.
+That would double-count the same quality information.
+
+Numeric stats are the concrete manifestation of the already-generated internal grade.
+
+
+9.2 class stat profiles
+-----------------------
+
+Prototype default mapping, stored in editable config:
+
+WARRIOR:
+primary_normal_stat = strength
+primary_high_stat = attack
+
+MAGE:
+primary_normal_stat = intelligence
+primary_high_stat = magic_power
+
+ROGUE:
+primary_normal_stat = luck
+primary_high_stat = attack
+
+ARCHER:
+primary_normal_stat = dexterity
+primary_high_stat = attack
+
+GUNNER:
+primary_normal_stat = dexterity
+primary_high_stat = attack
+
+CLERIC:
+primary_normal_stat = divine_power
+primary_high_stat = magic_power
+
+Normal stat IDs:
+strength
+dexterity
+luck
+intelligence
+divine_power
+
+High stat IDs:
+attack
+magic_power
+
+Special stat IDs:
+physical_defense
+magic_defense
+movement_speed
+evasion
+
+Unique stat IDs:
+critical_chance
+critical_damage
+armor_penetration
+element_damage
+
+Keep all mappings data-driven.
+
+
+9.3 true stat line data structure
+---------------------------------
+
+Recommended conceptual structure:
+
+StatLineData
+{
+    stat_id: StringName
+    category: NORMAL | HIGH | SPECIAL | UNIQUE | AMPLIFICATION
+    internal_grade: enum/null
+    actual_value: float
+    display_unit: FLAT | PERCENT
+    is_relevant_to_target_class: bool
+}
+
+WeaponTrueState
+{
+    item_type
+    item_target_class
+    item_tier
+    is_class_compatible
+
+    item_normal_stat_grade
+    item_high_stat_grade
+    item_unique_stat_grade
+    item_reinforce_grade
+    item_refining_level
+    item_amplification_grade
+
+    stat_lines: Array[StatLineData]
+    amplification_lines: Array[StatLineData]
+
+    actual_stability: int       # 0-100
+    stability_bracket
+
+    true_item_value_modifier
+    true_appraised_price
+}
+
+Do not store player-visible knowledge as the same mutable object as WeaponTrueState.
+
+
+9.4 player-known data structure
+-------------------------------
+
+Recommended conceptual structure:
+
+KnowledgeState enum:
+UNKNOWN
+LOWER_BOUND
+UPPER_BOUND
+RANGE
+EXACT
+
+KnownFieldData
+{
+    knowledge_state
+    known_exact_value
+    known_min_value
+    known_max_value
+}
+
+WeaponKnownState
+{
+    knows_item_type: bool
+    item_type
+
+    item_tier_info: KnownFieldData
+
+    known_stat_lines: Dictionary
+    reinforce_info: KnownFieldData or structured reveal data
+    refining_info: KnownFieldData
+    amplification_info: structured reveal data
+    stability_info: KnownFieldData
+}
+
+Example true state:
+item_high_stat_grade = EXCELLENT
+actual_attack = 67
+
+Before appraisal:
+known_attack.knowledge_state = UNKNOWN
+
+Partial appraisal example:
+known_attack.knowledge_state = RANGE
+known_attack.known_min_value = 60
+known_attack.known_max_value = 75
+
+Perfect appraisal:
+known_attack.knowledge_state = EXACT
+known_attack.known_exact_value = 67
+
+The UI reads WeaponKnownState.
+The price calculator reads WeaponTrueState.
+
+
+9.5 numeric generation rule
+---------------------------
+
+Use configurable numeric-range data.
+Do not hardcode ranges inside UI or generator scripts.
+
+General formula for a relevant NORMAL/HIGH stat:
+
+actual_value
+=
+round(
+    tier_reference_value
+    * random_uniform(grade_multiplier_min, grade_multiplier_max)
+)
+
+Prototype TEMPORARY reference values:
+
+NORMAL STAT tier_reference_value:
+T1 = 10
+T2 = 18
+T3 = 30
+T4 = 48
+T5 = 72
+
+HIGH STAT tier_reference_value:
+T1 = 12
+T2 = 22
+T3 = 38
+T4 = 60
+T5 = 90
+
+TEMPORARY NORMAL grade multiplier ranges:
+MIXED     = 0.35 - 0.55
+ADEQUATE  = 0.70 - 0.90
+EXCELLENT = 1.00 - 1.20
+NONE      = no relevant normal-stat line
+
+TEMPORARY HIGH grade multiplier ranges:
+LOW       = 0.35 - 0.55
+ADEQUATE  = 0.70 - 0.90
+EXCELLENT = 1.00 - 1.20
+NONE      = no relevant high-stat line
+
+These numeric values are prototype display values, NOT final balance.
+Put them in a config resource so they can be changed without code edits.
+
+
+9.6 visual meaning of NORMAL grade
+----------------------------------
+
+Use item_target_class to identify the relevant primary normal stat.
+
+EXCELLENT:
+- Generate relevant primary stat using EXCELLENT numeric range.
+
+ADEQUATE:
+- Generate relevant primary stat using ADEQUATE numeric range.
+
+MIXED:
+- Generate relevant primary stat using MIXED numeric range.
+- Also generate one random non-primary normal stat line at a lower/medium amount.
+- This visually communicates that part of the stat budget is wasted.
+
+NONE:
+- Do not generate the relevant primary normal stat.
+- Optional: generate one irrelevant normal stat line using a low temporary range.
+
+This is a presentation/data-generation rule.
+Price still uses value_normal_stat from Section 8.
+
+
+9.7 visual meaning of HIGH stat grade
+-------------------------------------
+
+Use item_target_class to determine whether ATTACK or MAGIC_POWER is relevant.
+
+EXCELLENT:
+- Generate relevant high stat using EXCELLENT range.
+
+ADEQUATE:
+- Generate relevant high stat using ADEQUATE range.
+
+LOW:
+- Generate relevant high stat using LOW range.
+
+NONE:
+- No relevant high stat.
+- Prototype option: 50% no high-stat line, 50% generate the opposite high-stat type as a wasted stat.
+- Keep this 50/50 value configurable.
+
+Price still uses value_high_stat from Section 8.
+
+
+9.8 unique stat concrete values
+-------------------------------
+
+If item_unique_stat_grade = NONE:
+- no unique stat line.
+
+If LOW or HIGH:
+- choose one unique stat_id uniformly from the unique stat list unless future weights are added.
+- generate concrete value from per-stat configurable ranges.
+
+TEMPORARY display ranges:
+
+critical_chance:
+LOW  = 2.0% - 5.0%
+HIGH = 6.0% - 10.0%
+
+critical_damage:
+LOW  = 5% - 12%
+HIGH = 13% - 25%
+
+armor_penetration:
+LOW  = 3% - 8%
+HIGH = 9% - 18%
+
+element_damage:
+LOW  = 4% - 10%
+HIGH = 11% - 22%
+
+These are temporary prototype ranges.
+Price uses the LOW/HIGH internal grade modifier, not the exact rolled percentage.
+
+
+9.9 special stat concrete values
+--------------------------------
+
+Data structure must support concrete special stat lines.
+Generation probability and class relevance table are not finalized.
+
+Store special-stat numeric ranges in config by:
+stat_id + item_tier + internal appraisal state.
+
+For the first prototype, Codex may use clearly marked temporary ranges.
+Do not invent a permanent class-special-stat system.
+
+
+9.10 amplification concrete lines
+---------------------------------
+
+Amplification is displayed as concrete extra normal-stat lines.
+
+Possible normal stat IDs:
+strength
+dexterity
+luck
+intelligence
+divine_power
+
+UNAPPLIED:
+- amplification system has not been assigned/used.
+- no lines exist.
+- still has +0.20 appraisal value because future potential remains.
+
+ZERO_LINE:
+- amplification was applied but produced no useful needed-stat line.
+
+ONE_LINE / TWO_LINE / THREE_LINE:
+- generate exactly that many assigned amplification lines.
+
+LOW/HIGH controls line strength using configurable numeric ranges.
+
+TEMPORARY prototype line-value rule:
+Use NORMAL tier_reference_value from Section 9.5.
+
+LOW amplification line:
+10% - 20% of tier reference value
+
+HIGH amplification line:
+20% - 35% of tier reference value
+
+Line stat IDs may be random among the five normal stats.
+The appraisal grade already represents whether the resulting line combination is valuable.
+Do not recalculate price from the exact line numbers in the first prototype.
+
+
+9.11 reinforcement player-facing data
+-------------------------------------
+
+Reinforcement grade is internal.
+The UI should eventually show concrete reinforcement information rather than only PERFECT/GOOD/MIXED/BAD.
+
+Recommended true-data structure:
+ReinforcementData
+{
+    internal_grade
+    applied_scroll_count
+    successful_scroll_count
+    scroll_profile_ids
+}
+
+Exact scroll counts/types are not finalized.
+For the first prototype, a debug-readable text summary is sufficient.
+Keep the structure extensible.
+
+
+9.12 refining player-facing data
+--------------------------------
+
+True value:
+actual refining level = integer 0-10.
+
+Player-known value may be:
+UNKNOWN
+LOWER_BOUND, e.g. ">= +7"
+UPPER_BOUND, e.g. "<= +8"
+RANGE, e.g. "+7 to +9"
+EXACT, e.g. "+8"
+
+
+9.13 stability player-facing data
+---------------------------------
+
+Store true stability as exact integer:
+actual_stability = 0 to 100
+
+Derive pricing bracket from actual_stability:
+100 exactly          -> STABILITY_100
+80-99                -> STABILITY_80_PLUS
+60-79                -> STABILITY_60_PLUS
+40-59                -> STABILITY_40_PLUS
+20-39                -> STABILITY_20_PLUS
+0-19                 -> STABILITY_BELOW_20
+
+Player-known stability may be UNKNOWN / RANGE / EXACT.
+
+Example after successful appraisal:
+Stability: 46%
+
+Exact stability consumption from reinforcement/refining/amplification is TODO.
+
+
+======================================================================
+10. MARKET STATE
+======================================================================
+
+Each class has two weekly market variables:
+class_power
+class_popularity
+
+At game start, prototype default:
+all class_power = NORMAL
+all class_popularity = NORMAL
+
+Every 7 in-game days, independently reroll each class variable.
+
+class_power states, uniform probability:
+STRONG = 1/3
+NORMAL = 1/3
+WEAK   = 1/3
+
+Value:
+STRONG = +0.15
+NORMAL = +0.05
+WEAK   = -0.10
+
+class_popularity states, uniform probability:
+POPULAR   = 1/3
+NORMAL    = 1/3
+UNPOPULAR = 1/3
+
+Value:
+POPULAR   = +0.20
+NORMAL    = +0.05
+UNPOPULAR = -0.20
+
+For weapon pricing, read market state from item_target_class.
+Do NOT automatically use guest_class for an incompatible weapon.
+
+Future systems may add patch previews, trends, rumors, or persistence.
+Not required now.
+
+
+======================================================================
+11. STABILITY PRICE MULTIPLIER
+======================================================================
+
+Stability is permanent processing headroom, NOT ordinary durability.
+It does not decrease from normal weapon use.
+It is primarily consumed by reinforcement/refining/amplification.
+
+First calculate true_item_value_modifier BEFORE stability.
+
+If true_item_value_modifier < +2.00:
+actual_stability = 100    -> multiplier 1.50
+80-99                     -> multiplier 1.30
+60-79                     -> multiplier 1.00
+40-59                     -> multiplier 0.80
+20-39                     -> multiplier 0.60
+0-19                      -> multiplier 0.40
+
+If true_item_value_modifier >= +2.00:
+actual_stability = 100    -> multiplier 2.00
+80-99                     -> multiplier 1.60
+60-79                     -> multiplier 1.20
+40-59                     -> multiplier 1.00
+20-39                     -> multiplier 0.90
+0-19                      -> multiplier 0.60
+
+Variable:
+stability_multiplier
+
+
+======================================================================
+12. TRUE APPRAISAL PRICE FORMULA
+======================================================================
+
+12.1 effective refining value
+-----------------------------
+
+effective_refining_value
+=
+value_refining
+*
+(
+    0.4 * coefficient_normal_stat
+    +
+    0.6 * coefficient_high_stat
+)
+
+
+12.2 true item value modifier
+-----------------------------
+
+true_item_value_modifier
+=
+value_class_popularity
++ value_class_power
++ value_normal_stat
++ value_high_stat
++ value_special_stat
++ value_unique_stat
++ value_reinforce
++ value_amplification
++ effective_refining_value
+
+NOTE:
+Do not include a leading +1 inside true_item_value_modifier.
+The +1 is applied in the price equation below.
+
+
+12.3 raw appraised price
+------------------------
+
+raw_appraised_price
+=
+base_price * (1 + true_item_value_modifier)
+
+
+12.4 stability application
+--------------------------
+
+appraised_price_before_floor
+=
+raw_appraised_price * stability_multiplier
+
+
+12.5 minimum floor
+------------------
+
+minimum_price = base_price * 0.10
+
+true_appraised_price
+=
+max(appraised_price_before_floor, minimum_price)
+
+Round displayed/debug gold values to integer gold.
+Internally, calculation may use float until final rounding.
+
+IMPORTANT:
+true_appraised_price is internal hidden truth.
+Do not show it automatically in normal player UI.
+
+
+======================================================================
+13. CUSTOMER ASKING PRICE
+======================================================================
+
+purpose_price_multiplier:
+EMERGENCY_CASH   = 0.50
+UPGRADE_PURCHASE = 0.80
+GREEDY_SELLING   = 1.00
+
+knowledge_price_multiplier:
+NONE = 1.00
+SOME = 1.10
+HIGH = 1.20
+
+normal_customer_asking_price
+=
+true_appraised_price
+* purpose_price_multiplier
+* knowledge_price_multiplier
+
+SCAMMER override:
+customer_asking_price
+=
+max(
+    normal_customer_asking_price,
+    true_appraised_price * 1.50
+)
+
+Non-scammer:
+customer_asking_price = normal_customer_asking_price
+
+Round to integer gold for display.
+
+
+======================================================================
+14. PLAYER PURCHASE OFFER AND FINAL PRICE
+======================================================================
+
+player_purchase_offer:
+- Direct player input/choice.
+- Must be >= 0.
+- Must not exceed current player cash unless a future credit system exists.
+
+If accepted:
+final_purchase_price = player_purchase_offer
+shop_trade_count += 1
+
+If rejected:
+final_purchase_price = null
+shop_trade_count does not increase.
+
+Do NOT automatically calculate final_purchase_price from true_appraised_price.
+
+
+======================================================================
+15. NEGOTIATION AND SATISFACTION
+======================================================================
+
+Define:
+
+offer_ratio
+=
+player_purchase_offer / true_appraised_price
+
+Use guest_purpose thresholds from Section 5.9.
+
+Acceptance / counteroffer / rejection logic is not completely finalized.
+
+Prototype minimum behavior:
+- If player_purchase_offer >= customer_asking_price: accept immediately.
+- Otherwise, if negotiation attempts remain: allow counter/retry.
+- If no attempts remain: reject unless future minimum-acceptance config says otherwise.
+
+Keep all thresholds data-driven.
+
+Kindness satisfaction override:
+GENEROUS:
+- cannot end as HUMILIATED; convert HUMILIATED -> DISSATISFIED.
+
+NORMAL:
+- cannot end as HUMILIATED; convert HUMILIATED -> DISSATISFIED.
+
+ARGUMENTATIVE:
+- no current satisfaction override.
+
+RUDE:
+- no satisfaction override; reputation receives -2 later.
+
+SCAMMER:
+- use special scam behavior.
+
+
+======================================================================
+16. REPUTATION UPDATE
+======================================================================
+
+Base delta:
+VERY_SATISFIED = +6
+SATISFIED      = +2
+DISSATISFIED   = -4
+HUMILIATED     = -8
+
+Then apply guest_kindness modifier:
+GENEROUS      -> +2
+NORMAL        -> +0
+ARGUMENTATIVE -> +0
+RUDE          -> -2
+
+SCAMMER failed-demand special case:
+current delta = -5
+unless later anti-scam mechanics override it.
+
+Finally:
+shop_reputation += final_reputation_delta
+
+
+======================================================================
+17. APPRAISAL TOOLS AND INFORMATION REVEAL
+======================================================================
+
+TRUE data always exists internally.
+The player only sees discovered information.
+
+Conceptual tools:
+
+VISUAL_INSPECTION
+- reveals item_type.
+
+MAGIC_SCOPE
+- reveals item_tier and stat information.
+- exact/partial result depends on future appraisal rules.
+
+SPELL_DETECTOR
+- reveals reinforcement information.
+- can fail according to future tool rules.
+
+REFINING_PROJECTOR
+- reveals refining level.
+- may reveal bound/range instead of exact value.
+
+REVERSE_CALCULATION_TABLE
+- reveals amplification information.
+- may fail to identify some lines.
+
+ARCANE_HAMMER
+- reveals stability information.
+- conceptually may reduce stability as appraisal risk.
+- exact risk is TODO.
+
+Architecture rule:
+Appraisal actions update WeaponKnownState only.
+They do NOT modify WeaponTrueState except for explicitly designed risk effects such as future arcane-hammer stability loss.
+
+Do not reveal true_appraised_price as a default appraisal result.
+Appraisal reveals item facts; the player judges the value.
+
+
+======================================================================
+18. RECOMMENDED GENERATION ORDER
+======================================================================
+
+1. Read ShopState.
+2. Generate guest_kindness from configurable weights.
+3. Generate guest_class uniformly 1/6.
+4. Generate guest_level from shop_reputation-dependent config.
+5. Generate guest_power from shop_reputation-dependent config.
+6. Generate guest_tendency uniformly 1/4.
+7. Generate guest_achievement from shop_trade_count-dependent config.
+8. Generate guest_title from shop_trade_count-dependent config.
+9. Generate guest_knowledge uniformly 1/3.
+10. Generate guest_purpose uniformly 1/3.
+
+11. Roll weapon compatibility: 80% compatible / 20% incompatible.
+12. Generate item_type.
+13. Resolve item_target_class.
+14. Generate item_tier from guest_level.
+
+15. Generate internal normal-stat grade.
+16. Generate internal high-stat grade.
+17. Generate true numeric normal/high stat lines from tier + grade + item_target_class.
+
+18. Generate item_unique_stat_grade from guest_tendency.
+19. Generate concrete unique stat line if applicable.
+20. Generate item_reinforce_grade from guest_tendency.
+21. Generate item_refining_level from guest_achievement.
+22. Generate amplification line count from guest_title.
+23. Generate amplification LOW/HIGH quality from configurable sub-roll.
+24. Generate concrete amplification lines.
+25. Generate special stat data from temporary/configurable rule.
+26. Generate or derive actual_stability from configurable rule.
+
+27. Read class_power and class_popularity for item_target_class.
+28. Calculate true_item_value_modifier.
+29. Calculate stability_multiplier.
+30. Calculate true_appraised_price.
+31. Calculate customer_asking_price.
+
+32. Create empty/initial WeaponKnownState.
+33. Begin player appraisal interaction.
+34. Begin negotiation.
+35. Resolve transaction and satisfaction.
+36. Update shop_reputation and shop_trade_count.
+
+
+======================================================================
+19. RECOMMENDED GODOT DATA / MODULE STRUCTURE
+======================================================================
+
+Keep gameplay logic modular and data-driven.
+
+Suggested modules/resources:
+
+ShopState
+- shop_reputation
+- shop_trade_count
+- cash
+- current_day
+
+MarketState
+- class_power per class
+- class_popularity per class
+- weekly reroll
+
+GuestData
+- all guest variables
+
+WeaponTrueState
+- all true weapon data
+- internal grades
+- concrete stat lines
+- true stability
+
+WeaponKnownState
+- only information discovered by the player
+
+StatLineData
+- one concrete stat line
+
+GuestGenerator
+- generates GuestData from ShopState + config
+
+WeaponGenerator
+- generates WeaponTrueState from GuestData + MarketState + config
+
+NumericStatGenerator
+- converts tier + internal grade + class profile into concrete numeric stat lines
+
+PriceCalculator
+- pure calculation module
+- no UI dependencies
+- calculates all value modifiers and true_appraised_price
+
+AppraisalSystem
+- updates WeaponKnownState
+- does not expose hidden true values to normal UI
+
+NegotiationSystem
+- customer_asking_price
+- player_purchase_offer
+- attempts
+- accept/counter/reject
+- satisfaction
+
+DayController
+- customer flow
+- transaction completion
+- day/week advance
+
+BalanceConfig / Resources
+- all probability tables
+- all modifier values
+- all numeric stat display ranges
+- all temporary TODO defaults
+
+
+======================================================================
+20. DEBUG / SIMULATION REQUIREMENTS
+======================================================================
+
+Before polished gameplay UI, create debug tools capable of:
+
+- Generate one guest + weapon.
+- Generate 100 guests + weapons.
+- Generate 1,000 guests + weapons.
+- Set random seed.
+- Print guest-variable distributions.
+- Verify uniform distributions for class/tendency/knowledge/purpose.
+- Print compatible vs incompatible weapon rate.
+- Print tier distribution.
+- Print internal grade distribution.
+- Print true concrete stat lines.
+- Print true_item_value_modifier.
+- Print stability_multiplier.
+- Print true_appraised_price.
+- Print customer_asking_price.
+- Optionally display WeaponKnownState beside WeaponTrueState in debug mode.
+
+Required statistical sanity checks:
+- guest_class approaches 1/6 each over large sample.
+- guest_tendency approaches 25% each.
+- guest_knowledge approaches 1/3 each.
+- guest_purpose approaches 1/3 each.
+- compatible weapon rate approaches 80%.
+
+Add assertions/tests for malformed probability tables.
+
+
+======================================================================
+21. TEMPORARY / UNFINALIZED RULES
+======================================================================
+
+The following are NOT final design values:
+
+1. guest_kindness generation weights.
+2. shop_reputation -> guest_level generation weights.
+3. shop_reputation -> guest_power generation weights.
+4. shop_trade_count -> guest_title generation weights.
+5. shop_trade_count -> guest_achievement generation weights.
+6. incompatible-weapon universal stat-quality tables.
+7. special-stat generation probability and relevance mapping.
+8. amplification LOW/HIGH sub-roll probability.
+9. exact stability consumption/generation formula.
+10. exact negotiation minimum-acceptance and counteroffer formula.
+11. appraisal tool success/failure probabilities.
+12. scammer detection/counterplay.
+13. exact reinforcement scroll-history generation.
+14. final concrete numeric stat ranges.
+
+Codex MAY create TEMPORARY DEBUG CONFIG VALUES when a runnable prototype requires them.
+
+Rules for temporary values:
+- Store in editable data/config resources.
+- Mark clearly as TEMPORARY / TODO.
+- Never bury them inside UI scripts.
+- Never treat them as finalized design.
+- Prefer simple neutral distributions.
+- Architecture must allow replacement without rewriting the system.
+- If a missing item requires inventing a NEW MECHANIC rather than a temporary number, do not invent it.
+
+
+======================================================================
+22. IMPLEMENTATION RULES FOR CODEX
+======================================================================
+
+1. Follow this specification before adding features.
+2. Do not add armor/accessories to the trade loop.
+3. Do not add special named/cursed/ego weapon systems yet.
+4. Keep all balance values data-driven.
+5. Keep random generation seedable.
+6. Keep true item data separate from player-known appraisal data.
+7. Keep internal grade separate from concrete numeric stat.
+8. Never display internal grade as the only final player-facing stat representation.
+9. Never use player_purchase_offer to calculate true_appraised_price.
+10. Never use customer_asking_price as true item value.
+11. Never make guest_knowledge alter true item value.
+12. Never double-count concrete numeric stats in price after their internal grade has already contributed value.
+13. Use item_target_class for class market values and relevant stat profile.
+14. Keep PriceCalculator as a pure/testable module.
+15. Keep UI separate from generation/calculation logic.
+16. Use English-only filenames/paths.
+17. Prefer a minimal working debug prototype over polished visuals.
+18. If a rule is TODO, use config placeholders rather than redesigning the system.
+
+
+======================================================================
+23. FIRST IMPLEMENTATION MILESTONE
+======================================================================
+
+The first Codex pass should aim to produce:
+
+A) Data/enums/config resources.
+B) GuestGenerator.
+C) WeaponGenerator.
+D) NumericStatGenerator.
+E) PriceCalculator.
+F) MarketState.
+G) WeaponTrueState / WeaponKnownState separation.
+H) Simple AppraisalSystem skeleton.
+I) Simple NegotiationSystem skeleton.
+J) Debug screen / test runner for mass generation.
+
+The first pass does NOT need:
+- finished art
+- animation
+- story
+- polished shop UI
+- resale loop
+- special weapons
+- armor/accessories
+
+Recommended implementation order:
+DATA -> GENERATION -> PRICE TESTS -> MASS SIMULATION -> APPRAISAL REVEAL -> NEGOTIATION -> SIMPLE UI
+
+
+======================================================================
+24. QUICK FORMULA REFERENCE
+======================================================================
+
+effective_refining_value
+=
+value_refining
+*
+(
+    0.4 * coefficient_normal_stat
+    +
+    0.6 * coefficient_high_stat
+)
+
+true_item_value_modifier
+=
+value_class_popularity
++ value_class_power
++ value_normal_stat
++ value_high_stat
++ value_special_stat
++ value_unique_stat
++ value_reinforce
++ value_amplification
++ effective_refining_value
+
+raw_appraised_price
+=
+base_price * (1 + true_item_value_modifier)
+
+true_appraised_price
+=
+max(
+    raw_appraised_price * stability_multiplier,
+    base_price * 0.10
+)
+
+normal_customer_asking_price
+=
+true_appraised_price
+* purpose_price_multiplier
+* knowledge_price_multiplier
+
+customer_asking_price
+=
+SCAMMER
+    ? max(normal_customer_asking_price, true_appraised_price * 1.50)
+    : normal_customer_asking_price
+
+player_purchase_offer
+=
+PLAYER INPUT
+
+final_purchase_price
+=
+player_purchase_offer IF ACCEPTED
+
+satisfaction offer_ratio
+=
+player_purchase_offer / true_appraised_price
+
+
+======================================================================
+25. EXAMPLE TRUE ITEM VS PLAYER-KNOWN ITEM
+======================================================================
+
+EXAMPLE TRUE STATE - INTERNAL ONLY:
+
+Guest class: MAGE
+Weapon: staff
+Target class: MAGE
+Tier: 4
+Normal grade: EXCELLENT
+High grade: EXCELLENT
+Unique grade: HIGH
+Refining: +8
+Actual stability: 46
+
+True concrete lines:
+INT +54
+Magic Power +69
+Critical Chance +7.8%
+
+true_appraised_price: [CALCULATED, HIDDEN]
+customer_asking_price: [CALCULATED]
+
+PLAYER VIEW BEFORE APPRAISAL:
+Staff
+Tier: ???
+INT: ???
+Magic Power: ???
+Unique Option: ???
+Refining: ???
+Stability: ???
+
+PLAYER VIEW AFTER PARTIAL APPRAISAL:
+T4 Staff
+INT: 45-60
+Magic Power: 60+
+Unique Option: ???
+Refining: +7 or higher
+Stability: 40-59%
+
+PLAYER VIEW AFTER FULL APPRAISAL:
+T4 Staff
+INT +54
+Magic Power +69
+Critical Chance +7.8%
+Refining +8
+Stability 46%
+
+The UI must not show:
+"EXCELLENT normal stat"
+"EXCELLENT high stat"
+as the normal final representation.
+Those are hidden internal balance categories.
+
+
+======================================================================
+END OF SPECIFICATION - DRAFT 0.2
+======================================================================
