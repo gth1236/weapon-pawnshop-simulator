@@ -17,7 +17,9 @@
       "economy.buyer_fit",
       "economy.interest_bands",
       "economy.pricing",
-      "economy.starting_cash",
+      "simulation_policies.*",
+      "economy.debt_repayment.policies.moderate",
+      "economy.debt_repayment.policies.aggressive",
       "economy.daily_visitors",
       "economy.sale_reputation"
     ]
@@ -1035,9 +1037,51 @@
       240
     ]
   },
+  "appraisal": {
+    "unassisted_correct_probability": 0.5,
+    "property_tools": {
+      "reinforcement": "reinforcement_tool",
+      "refining": "refining_tool",
+      "amplification": "amplification_tool",
+      "stability": "stability_tool",
+      "special_property": "special_property_tool",
+      "unique_property": "unique_property_tool"
+    }
+  },
+  "simulation_policies": {
+    "purchase": "BUY_IF_ASK_AT_MOST_TRUE_APPRAISAL",
+    "sale": "ACCEPT_IF_OFFER_MEETS_APPRAISAL_AND_COST_FLOOR",
+    "inventory_expansion": "EXPAND_IF_BLOCKED_AND_AFFORDABLE",
+    "cash_deficit": "ALLOW_NEGATIVE_CASH_CONTINUE_TRADING",
+    "scrap": "MANUAL_ONLY"
+  },
   "economy": {
     "starting_cash": 100000,
-    "weeks": 24,
+    "starting_debt": 0,
+    "weeks": 12,
+    "trials": 500,
+    "days_per_week": 7,
+    "weeks_per_month": 4,
+    "initial_inventory_capacity": 10,
+    "maximum_inventory_capacity": 20,
+    "inventory_expansion_cost": 10000,
+    "scrap_purchase_price_ratio": 0.5,
+    "temporary_metadata": {
+      "simulation_policies": "TEMPORARY simulator decision heuristics; expansion and scrap are player-selected game actions",
+      "negative_cash": "SIMULATION ONLY; decide Godot insufficient-cash behavior after playtesting",
+      "debt_repayment": "HISTORICAL EXPERIMENT ONLY: disabled in current game rules"
+    },
+    "weekly_operating_cost": {"first_week": 2000, "weekly_increase": 2000},
+    "debt_repayment": {
+      "enabled": false,
+      "mandatory_weekly_payment": 5000,
+      "default_policy": "mandatory_only",
+      "policies": {
+        "mandatory_only": {"name": "MANDATORY_ONLY", "reserve_threshold": 0, "excess_repayment_fraction": 0},
+        "moderate": {"name": "MODERATE_EARLY_REPAYMENT", "reserve_threshold": 50000, "excess_repayment_fraction": 0.5},
+        "aggressive": {"name": "AGGRESSIVE_EARLY_REPAYMENT", "reserve_threshold": 30000, "excess_repayment_fraction": 1}
+      }
+    },
     "daily_visitors": {
       "minimum": 6,
       "maximum": 8

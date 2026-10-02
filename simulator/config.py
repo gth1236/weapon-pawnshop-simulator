@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,66 @@ def validate_config(config: dict[str, Any]) -> None:
     validate_weights(config["economy"]["visitor_roles"], "economy.visitor_roles")
     if sum(config["economy"]["buyer_fit"]["weights"].values()) != 100:
         raise ConfigError("economy.buyer_fit.weights must sum to 100")
+    economy = config["economy"]
+    for key in ("starting_cash", "starting_debt"):
+        value=economy[key]
+        if not isinstance(value,(int,float)) or not math.isfinite(value) or value < 0:
+            raise ConfigError(f"economy.{key} must be finite and non-negative")
+    for key in ("weeks","trials","initial_inventory_capacity","maximum_inventory_capacity"):
+        if type(economy[key]) is not int or economy[key] < 1:
+            raise ConfigError(f"economy.{key} must be a positive integer")
+    if economy["initial_inventory_capacity"] > economy["maximum_inventory_capacity"]:
+        raise ConfigError("inventory initial capacity exceeds maximum")
+    cost=economy["inventory_expansion_cost"]
+    if not isinstance(cost,(int,float)) or not math.isfinite(cost) or cost < 0:
+        raise ConfigError("inventory expansion cost must be finite and non-negative")
+    scrap_ratio=economy["scrap_purchase_price_ratio"]
+    if not isinstance(scrap_ratio,(int,float)) or not math.isfinite(scrap_ratio) or not 0 <= scrap_ratio <= 1:
+        raise ConfigError("scrap purchase price ratio must be between 0 and 1")
+    for cost in economy["weekly_operating_cost"].values():
+        if not isinstance(cost,(int,float)) or not math.isfinite(cost) or cost < 0:
+            raise ConfigError("weekly operating costs must be finite and non-negative")
+    policies=config["simulation_policies"]
+    if policies["inventory_expansion"] not in ("EXPAND_IF_BLOCKED_AND_AFFORDABLE", "MANUAL_ONLY"):
+        raise ConfigError("unsupported inventory expansion policy")
+    if policies["cash_deficit"] != "ALLOW_NEGATIVE_CASH_CONTINUE_TRADING":
+        raise ConfigError("unsupported cash deficit rule")
+    if policies["purchase"] != "BUY_IF_ASK_AT_MOST_TRUE_APPRAISAL" or policies["sale"] != "ACCEPT_IF_OFFER_MEETS_APPRAISAL_AND_COST_FLOOR":
+        raise ConfigError("unsupported automatic trade policy")
+    if policies["scrap"] != "MANUAL_ONLY":
+        raise ConfigError("automatic scrap policies are not implemented")
+    if economy["days_per_week"] != 7 or economy["weeks_per_month"] != 4:
+        raise ConfigError("time unit must be 7 days/week and 4 weeks/month")
+    repayment = economy["debt_repayment"]
+    if type(repayment["enabled"]) is not bool:
+        raise ConfigError("debt repayment enabled must be a boolean")
+    if not repayment["enabled"] and economy["starting_debt"] != 0:
+        raise ConfigError("current debt-disabled rules require starting_debt = 0")
+    amount = repayment["mandatory_weekly_payment"]
+    if not isinstance(amount, (int, float)) or not math.isfinite(amount) or amount < 0:
+        raise ConfigError("mandatory weekly debt payment must be finite and non-negative")
+    if set(repayment["policies"]) != {"mandatory_only", "moderate", "aggressive"}:
+        raise ConfigError("debt repayment policies must include mandatory_only, moderate and aggressive")
+    if repayment["default_policy"] not in repayment["policies"]:
+        raise ConfigError("unknown default debt repayment policy")
+    for name, policy in repayment["policies"].items():
+        reserve, fraction = policy["reserve_threshold"], policy["excess_repayment_fraction"]
+        if not isinstance(reserve, (int, float)) or not math.isfinite(reserve) or reserve < 0:
+            raise ConfigError(f"{name}: reserve must be finite and non-negative")
+        if not isinstance(fraction, (int, float)) or not math.isfinite(fraction) or not 0 <= fraction <= 1:
+            raise ConfigError(f"{name}: repayment fraction must be between 0 and 1")
+    if repayment["policies"]["mandatory_only"]["excess_repayment_fraction"] != 0:
+        raise ConfigError("mandatory_only must have zero optional repayment fraction")
+    appraisal=config["appraisal"]
+    probability=appraisal["unassisted_correct_probability"]
+    if not isinstance(probability,(int,float)) or not math.isfinite(probability) or not 0 <= probability <= 1:
+        raise ConfigError("appraisal correct probability must be between 0 and 1")
+    from .appraisal import PROPERTY_FIELDS, property_domain
+    if set(appraisal["property_tools"]) != set(PROPERTY_FIELDS):
+        raise ConfigError("appraisal tool mapping must cover every hidden property")
+    for name,tool in appraisal["property_tools"].items():
+        if not isinstance(tool,str) or not tool.strip() or len(property_domain(config,name)) < 2:
+            raise ConfigError(f"{name}: tool identifier and at least two possible values required")
     for axis, variables in config["progression"].items():
         if axis == "temporary":
             continue

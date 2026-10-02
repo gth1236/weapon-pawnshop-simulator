@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any
+import json
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,10 @@ class KnownField:
     known_exact_value: Any = None
     known_min_value: Any = None
     known_max_value: Any = None
+    displayed_value: Any = None
+
+    def player_view(self):
+        return {"knowledge_state": self.knowledge_state, "displayed_value": self.displayed_value}
 
 
 @dataclass
@@ -45,6 +50,17 @@ class WeaponKnownState:
     refining: KnownField = field(default_factory=KnownField)
     amplification: KnownField = field(default_factory=KnownField)
     stability: KnownField = field(default_factory=KnownField)
+    special_property: KnownField = field(default_factory=KnownField)
+    unique_property: KnownField = field(default_factory=KnownField)
+
+    def player_view(self):
+        """JSON-ready player data. Never serialize WeaponTrueState for a player UI."""
+        return {
+            "tier": self.item_tier.player_view(),
+            "concrete_stats": [line.player_view() for line in self.known_stat_lines.values()],
+            "properties": {name: getattr(self, name).player_view() for name in (
+                "reinforcement", "refining", "amplification", "stability", "special_property", "unique_property")},
+        }
 
 
 @dataclass(frozen=True)
@@ -85,6 +101,10 @@ class PriceResult:
     appraised_price: int
     asking_price: int
 
+    @property
+    def true_appraised_price(self):
+        return self.appraised_price
+
 
 @dataclass(frozen=True)
 class SimulationRecord:
@@ -110,6 +130,7 @@ class SimulationRecord:
             "known_refining_state": self.known_state.refining.knowledge_state,
             "known_amplification_state": self.known_state.amplification.knowledge_state,
             "known_stability_state": self.known_state.stability.knowledge_state,
+            "player_visible_json": json.dumps(self.known_state.player_view(), ensure_ascii=False),
         })
         row.update({"class_power": self.class_power, "class_popularity": self.class_popularity})
         row.update({f"price_{k}": v for k, v in asdict(self.price).items()})

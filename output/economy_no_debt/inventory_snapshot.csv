@@ -1,0 +1,10 @@
+item_id,item_class,item_type,item_tier,purchase_day,purchase_week,final_purchase_price,purchase_appraised_price,current_appraised_price,shop_listing_price,days_in_inventory
+39,WARRIOR,one_handed_sword,1,19,3,1665,2775,2775,3330,65
+48,WARRIOR,spear,1,24,4,1584,1800,2175,2160,60
+70,WARRIOR,one_handed_sword,1,46,7,1539,1749,1524,2099,38
+86,ROGUE,throwing_weapon,2,60,9,3724,3724,3334,4001,24
+91,WARRIOR,one_handed_sword,1,63,9,1518,1725,1475,1770,21
+97,WARRIOR,one_handed_sword,1,66,10,2280,2850,2625,3420,18
+107,WARRIOR,one_handed_sword,1,71,11,2178,2475,2250,2970,13
+116,GUNNER,gun,1,83,12,1384,1730,1730,2076,1
+117,ROGUE,throwing_weapon,2,84,12,1224,1530,1530,1836,0

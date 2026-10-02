@@ -1,7 +1,7 @@
 RPG WEAPON PAWNSHOP - CORE SYSTEM SPECIFICATION
-Version: Draft 0.2
+Version: Draft 0.2 + current Python reference rules (2026-10-02)
 Purpose: Codex implementation handoff
-Target: Godot 4.6.1 / GDScript prototype
+Target: Python reference implementation; future Godot/GDScript port
 Scope: Weapon-only prototype / guest generation / weapon generation / appraisal / purchase negotiation / reputation loop
 
 This file supersedes Draft 0.1.
@@ -35,7 +35,7 @@ OUT OF SCOPE FOR FIRST PROTOTYPE:
 - Armor and accessories as tradable items.
 - Ego weapons, named weapons, cursed weapons, discontinued weapons.
 - Shop decorations.
-- Full resale-to-buyer system.
+- Godot/UI implementation. Buyer resale is implemented in the Python reference.
 - Full order/request system.
 - Story content.
 
@@ -70,7 +70,7 @@ actual_refining_level = 8
 actual_stability = 46
 
 C) PLAYER-KNOWN DATA
-What the player has successfully discovered through appraisal.
+Always-exact tier/concrete stats, stored unassisted guesses, and tool-confirmed properties.
 This is separate from TRUE item data.
 
 D) PRICES
@@ -862,7 +862,7 @@ Stability 46%
 The exact numeric stat is generated FROM the internal grade and item tier.
 Therefore:
 
-internal grade -> true numeric stat -> appraisal reveal -> player-known stat
+internal grade -> true numeric stat -> always EXACT player-visible numeric stat
 
 The true numeric stat and the player-known stat are separate data.
 
@@ -974,55 +974,24 @@ Do not store player-visible knowledge as the same mutable object as WeaponTrueSt
 9.4 player-known data structure
 -------------------------------
 
-Recommended conceptual structure:
+WeaponTrueState and WeaponKnownState are separate objects.
+KnownField stores knowledge_state, displayed_value, known_exact_value,
+known_min_value and known_max_value. Legacy UNKNOWN/bounds remain available
+for future compatibility; current generated fields use EXACT or UNAPPRAISED_GUESS.
 
-KnowledgeState enum:
-UNKNOWN
-LOWER_BOUND
-UPPER_BOUND
-RANGE
-EXACT
+Tier and all concrete numeric stat lines are always EXACT without tools.
+This includes existing unique/amplification concrete numbers, but not internal
+normal/high/stat-line grade, category, relevance or the true appraised price.
 
-KnownFieldData
-{
-    knowledge_state
-    known_exact_value
-    known_min_value
-    known_max_value
-}
+Reinforcement, refining, amplification, stability, special_property and
+unique_property begin as UNAPPRAISED_GUESS. Each has a stored displayed value
+separate from the true value. A correct guess remains marked as a guess.
+Tool-confirmed fields become EXACT with known_exact_value = displayed_value.
+Special/unique property use the existing property enums until effect data is designed.
 
-WeaponKnownState
-{
-    knows_item_type: bool
-    item_type
-
-    item_tier_info: KnownFieldData
-
-    known_stat_lines: Dictionary
-    reinforce_info: KnownFieldData or structured reveal data
-    refining_info: KnownFieldData
-    amplification_info: structured reveal data
-    stability_info: KnownFieldData
-}
-
-Example true state:
-item_high_stat_grade = EXCELLENT
-actual_attack = 67
-
-Before appraisal:
-known_attack.knowledge_state = UNKNOWN
-
-Partial appraisal example:
-known_attack.knowledge_state = RANGE
-known_attack.known_min_value = 60
-known_attack.known_max_value = 75
-
-Perfect appraisal:
-known_attack.knowledge_state = EXACT
-known_attack.known_exact_value = 67
-
-The UI reads WeaponKnownState.
-The price calculator reads WeaponTrueState.
+WeaponKnownState.player_view() is the JSON-ready player interface.
+The UI reads that view; price calculation reads WeaponTrueState only.
+InventoryItem stores both the weapon and its known_state.
 
 
 9.5 numeric generation rule
@@ -1228,12 +1197,8 @@ Keep the structure extensible.
 True value:
 actual refining level = integer 0-10.
 
-Player-known value may be:
-UNKNOWN
-LOWER_BOUND, e.g. ">= +7"
-UPPER_BOUND, e.g. "<= +8"
-RANGE, e.g. "+7 to +9"
-EXACT, e.g. "+8"
+Player-known refining is UNAPPRAISED_GUESS before tool use and EXACT after tool use.
+Displayed guesses are valid refining levels. Bounds/ranges are reserved for future designs.
 
 
 9.13 stability player-facing data
@@ -1250,7 +1215,7 @@ Derive pricing bracket from actual_stability:
 20-39                -> STABILITY_20_PLUS
 0-19                 -> STABILITY_BELOW_20
 
-Player-known stability may be UNKNOWN / RANGE / EXACT.
+Player-known stability is UNAPPRAISED_GUESS before tool use and EXACT after tool use.
 
 Example after successful appraisal:
 Stability: 46%
@@ -1520,43 +1485,31 @@ shop_reputation += final_reputation_delta
 17. APPRAISAL TOOLS AND INFORMATION REVEAL
 ======================================================================
 
-TRUE data always exists internally.
-The player only sees discovered information.
+Tier and concrete RPG numbers are always exact without any tool.
+Internal normal/high/stat-line grades are not player-facing labels.
+The six hidden property names and required tools are configured in
+appraisal.property_tools: reinforcement, refining, amplification, stability,
+special_property and unique_property.
 
-Conceptual tools:
+On creation, each hidden property independently has a 50% correct displayed
+guess and a 50% incorrect displayed guess. An incorrect guess is chosen uniformly
+from the configured normal domain EXCLUDING the true value. No invalid enums,
+out-of-range refining levels or impossible stability values are generated.
+Guesses are saved, not rerolled on viewing. The appraisal RNG is derived without
+consuming the generation/trading RNG stream, preserving seeded reproducibility.
 
-VISUAL_INSPECTION
-- reveals item_type.
+An owned tool must be explicitly used through apply_appraisal_tool. The selected
+property then becomes EXACT and displays its true value. Ownership alone does not
+reveal anything. Missing tools cause an error without changing knowledge.
+No tool failure, partial reveal or item-damage risk is implemented in this prototype.
 
-MAGIC_SCOPE
-- reveals item_tier and stat information.
-- exact/partial result depends on future appraisal rules.
-
-SPELL_DETECTOR
-- reveals reinforcement information.
-- can fail according to future tool rules.
-
-REFINING_PROJECTOR
-- reveals refining level.
-- may reveal bound/range instead of exact value.
-
-REVERSE_CALCULATION_TABLE
-- reveals amplification information.
-- may fail to identify some lines.
-
-ARCANE_HAMMER
-- reveals stability information.
-- conceptually may reduce stability as appraisal risk.
-- exact risk is TODO.
-
-Architecture rule:
-Appraisal actions update WeaponKnownState only.
-They do NOT modify WeaponTrueState except for explicitly designed risk effects such as future arcane-hammer stability loss.
-
+Appraisal changes WeaponKnownState only, never WeaponTrueState or true price.
 Do not reveal true_appraised_price as a default appraisal result.
-Appraisal reveals item facts; the player judges the value.
+Tool procurement, costs and UI are TODO. The baseline simulator still makes purchase
+choices using true appraisal; it does not model a player's erroneous valuation.
 
 
+======================================================================
 ======================================================================
 18. RECOMMENDED GENERATION ORDER
 ======================================================================
@@ -1723,7 +1676,7 @@ The following are NOT final design values:
 8. amplification LOW/HIGH sub-roll probability.
 9. exact stability consumption/generation formula.
 10. exact negotiation minimum-acceptance and counteroffer formula.
-11. appraisal tool success/failure probabilities.
+11. appraisal tool acquisition/cost/UX (current owned-and-used tool reveals exact truth).
 12. scammer detection/counterplay.
 13. exact reinforcement scroll-history generation.
 14. final concrete numeric stat ranges.
@@ -1751,7 +1704,7 @@ Rules for temporary values:
 5. Keep random generation seedable.
 6. Keep true item data separate from player-known appraisal data.
 7. Keep internal grade separate from concrete numeric stat.
-8. Never display internal grade as the only final player-facing stat representation.
+8. Never display internal normal/high stat grades to the player; display exact concrete RPG stats instead.
 9. Never use player_purchase_offer to calculate true_appraised_price.
 10. Never use customer_asking_price as true item value.
 11. Never make guest_knowledge alter true item value.
@@ -1860,58 +1813,54 @@ player_purchase_offer / true_appraised_price
 25. EXAMPLE TRUE ITEM VS PLAYER-KNOWN ITEM
 ======================================================================
 
-EXAMPLE TRUE STATE - INTERNAL ONLY:
+TRUE STATE: tier 4, INT +54, Magic Power +69, Critical Chance +7.8%,
+refining +8, stability 46. Internal normal/high grades EXCELLENT are not shown.
 
-Guest class: MAGE
-Weapon: staff
-Target class: MAGE
-Tier: 4
-Normal grade: EXCELLENT
-High grade: EXCELLENT
-Unique grade: HIGH
-Refining: +8
-Actual stability: 46
+BEFORE TOOLS: tier 4 and all those concrete numbers are EXACT. For example,
+refining +3 and stability 81 can be stored UNAPPRAISED_GUESS values.
+A correct guess is also marked UNAPPRAISED_GUESS, never silently EXACT.
 
-True concrete lines:
-INT +54
-Magic Power +69
-Critical Chance +7.8%
-
-true_appraised_price: [CALCULATED, HIDDEN]
-customer_asking_price: [CALCULATED]
-
-PLAYER VIEW BEFORE APPRAISAL:
-Staff
-Tier: ???
-INT: ???
-Magic Power: ???
-Unique Option: ???
-Refining: ???
-Stability: ???
-
-PLAYER VIEW AFTER PARTIAL APPRAISAL:
-T4 Staff
-INT: 45-60
-Magic Power: 60+
-Unique Option: ???
-Refining: +7 or higher
-Stability: 40-59%
-
-PLAYER VIEW AFTER FULL APPRAISAL:
-T4 Staff
-INT +54
-Magic Power +69
-Critical Chance +7.8%
-Refining +8
-Stability 46%
-
-The UI must not show:
-"EXCELLENT normal stat"
-"EXCELLENT high stat"
-as the normal final representation.
-Those are hidden internal balance categories.
+AFTER THE CORRESPONDING TOOLS ARE USED: refining +8 and stability 46 are EXACT.
+Other hidden fields remain guesses until their own tools are used.
+The true appraised price is identical before and after changing player knowledge.
 
 
 ======================================================================
-END OF SPECIFICATION - DRAFT 0.2
+26. CURRENT ECONOMY AND INVENTORY REFERENCE RULES
+======================================================================
+
+GAME RULE:
+- Starting cash = 100,000 G. Starting debt = 0; no debt, repayment or interest.
+- Net worth = cash + inventory current appraised value.
+- 1 week = 7 days; 1 month = 4 weeks.
+- Weekly operating cost = 2,000 * week G; weeks 1-12 total = 156,000 G.
+- Pay after Sunday's final customer and weekly processing, before checkpoint/next week.
+- Initial inventory capacity = 10; maximum = 20. Full inventory blocks purchases.
+- Player-selected expansion adds exactly 1 slot for 10,000 G every time.
+  It requires sufficient cash and cannot exceed 20 slots. No stepped cost table.
+- Buyer budget/cash/wealth is not modeled. Existing fit/interest/listing/ceiling/
+  haggle rules remain; consider budgets only if play testing demonstrates a need.
+- SCRAP is a player-selected action for any owned inventory item.
+  scrap_price = round(final_purchase_price * 0.50), using existing Python rounding.
+  Add scrap_price to cash and remove that item. No reputation/trade count/market
+  changes. Separate scrap_count, scrap_revenue, scrap_cost_basis, scrap_realized_loss
+  (purchase price minus scrap price); exclude scrap from all ordinary sale statistics.
+
+SIMULATION-ONLY TEMPORARY POLICIES:
+- Automatic purchase/sale heuristics substitute for player decisions.
+- EXPAND_IF_BLOCKED_AND_AFFORDABLE pays for one expansion only when both expansion
+  and the intended purchase are affordable; manual expansion is a separate action.
+- Negative cash is allowed for operating costs. New purchases require positive cash;
+  sales can restore cash. Actual game insolvency behavior is a play-test TODO.
+- No automatic scrap in baseline. Future cash-critical/long-held policies are TODO.
+- No events are implemented. Future temporary modifiers must preserve existing rules.
+
+config/balance.json separates simulation_policies from game economic parameters.
+Legacy debt code is retained only for historical experiments and disabled by default.
+Historical output files remain historical, never authoritative current settings.
+Existing seller/buyer/generation/pricing/market/reputation/progression rules remain.
+
+
+======================================================================
+END OF SPECIFICATION - CURRENT PYTHON REFERENCE AMENDMENT
 ======================================================================

@@ -1,0 +1,208 @@
+ECONOMY SIMULATION (500 trials, seed=12345, 84 days)
+Debt policy: mandatory_only; operating cost -> mandatory -> optional repayment.
+TEMPORARY early-repayment/expansion policies and negative-cash rule. No interest or new borrowing.
+Margins = (sale - purchase) / purchase, excluding operating and expansion costs.
+Week 1: cash median=13,634 G, inventory value median=32,126 G, net worth median=-45,250 G, reputation median=46.00, trades median=24
+  cash: mean=18,501.91, median=13,634.00, p10=-3,094.40, p90=47,832.20, minimum=-6,919.00
+  debt_remaining: mean=95,000.00, median=95,000.00, p10=95,000.00, p90=95,000.00, minimum=95,000.00
+  gross_assets: mean=52,655.16, median=49,750.00, p10=30,942.70, p90=76,786.20, minimum=14,900.00
+  net_worth_after_debt: mean=-42,344.84, median=-45,250.00, p10=-64,057.30, p90=-18,213.80, minimum=-80,100.00
+  inventory_count: mean=5.86, median=6.00, p10=3.00, p90=8.00, minimum=0.00
+  inventory_capacity: mean=7.36, median=7.00, p10=6.00, p90=9.00, minimum=5.00
+  mandatory_debt_payment_total: mean=5,000.00, median=5,000.00, p10=5,000.00, p90=5,000.00, minimum=5,000.00
+  optional_debt_payment_total: mean=0.00, median=0.00, p10=0.00, p90=0.00, minimum=0.00
+  total_debt_repayment: mean=5,000.00, median=5,000.00, p10=5,000.00, p90=5,000.00, minimum=5,000.00
+  free_slots: mean=1.50, median=1.00, p10=0.00, p90=3.00, minimum=0.00
+  inventory_cost_basis: mean=25,649.41, median=24,475.50, p10=9,738.00, p90=44,471.90, minimum=0.00
+  inventory_value: mean=34,153.25, median=32,126.00, p10=12,986.50, p90=57,761.50, minimum=0.00
+  shop_purchase_count: mean=15.02, median=15.00, p10=12.00, p90=18.00, minimum=3.00
+  shop_sale_count: mean=9.17, median=9.00, p10=6.00, p90=12.00, minimum=1.00
+  shop_trade_count: mean=24.19, median=24.00, p10=18.00, p90=30.00, minimum=4.00
+  realized_profit: mean=18,816.32, median=16,004.00, p10=7,381.60, p90=34,729.90, minimum=950.00
+  mean_margin: mean=0.56, median=0.56, p10=0.39, p90=0.74, minimum=0.22
+  median_margin: mean=0.50, median=0.43, p10=0.22, p90=0.86, minimum=0.10
+  reputation: mean=46.09, median=46.00, p10=20.00, p90=73.00, minimum=-19.00
+  inventory_full_events: mean=5.05, median=5.00, p10=1.00, p90=9.00, minimum=0.00
+  missed_purchase_due_to_inventory: mean=2.69, median=2.00, p10=0.00, p90=7.00, minimum=0.00
+  missed_purchase_due_to_cash: mean=1.03, median=1.00, p10=0.00, p90=3.00, minimum=0.00
+  inventory_expansion_count: mean=2.36, median=2.00, p10=1.00, p90=4.00, minimum=0.00
+  inventory_expansion_spending: mean=17,665.00, median=12,500.00, p10=5,000.00, p90=35,000.00, minimum=0.00
+  total_operating_cost_paid: mean=2,000.00, median=2,000.00, p10=2,000.00, p90=2,000.00, minimum=2,000.00
+  weeks_with_negative_cash: mean=0.17, median=0.00, p10=0.00, p90=1.00, minimum=0.00
+  cash_deficit_events: mean=0.17, median=0.00, p10=0.00, p90=1.00, minimum=0.00
+  minimum_cash: mean=5,380.11, median=3,189.50, p10=-3,094.40, p90=16,174.90, minimum=-6,919.00
+  cash_before_operating_cost_ledger: mean=20,501.91, median=15,634.00, p10=-1,094.40, p90=49,832.20, minimum=-4,919.00
+  gross_assets_before_operating_cost_ledger: mean=54,655.16, median=51,750.00, p10=32,942.70, p90=78,786.20, minimum=16,900.00
+  Capacity distribution: 5=8.2%, 6-9=90.0%, 10-14=1.8%, 15-19=0.0%, 20=0.0%
+  Negative cash now/ever: 17.2%/17.2%
+  Debt fully repaid: 0.0%; completion week mean/median (repaid only): None/None
+  guest_kindness: GENEROUS=6.4%, NORMAL=47.3%, ARGUMENTATIVE=18.6%, RUDE=18.2%, SCAMMER=9.5%
+  guest_level: 1-10=31.8%, 11-30=29.1%, 31-50=19.4%, 51-70=11.4%, 71-90=5.9%, 91-120=2.5%
+  guest_power: VERY_LOW=27.7%, LOW=29.1%, NORMAL=26.4%, HIGH=11.4%, VERY_HIGH=5.5%
+  guest_title: NONE=45.4%, C=27.8%, B=15.9%, A=8.0%, S=3.0%
+  guest_achievement: NONE=42.3%, SOME=31.9%, GOOD=18.9%, VERY_GOOD=6.9%
+Week 2: cash median=6,088 G, inventory value median=36,226 G, net worth median=-40,982 G, reputation median=77.00, trades median=46
+  cash: mean=12,952.57, median=6,088.00, p10=-5,530.40, p90=42,586.00, minimum=-8,986.00
+  debt_remaining: mean=90,000.00, median=90,000.00, p10=90,000.00, p90=90,000.00, minimum=90,000.00
+  gross_assets: mean=53,019.64, median=49,018.50, p10=27,474.70, p90=85,585.40, minimum=11,708.00
+  net_worth_after_debt: mean=-36,980.36, median=-40,981.50, p10=-62,525.30, p90=-4,414.60, minimum=-78,292.00
+  inventory_count: mean=6.79, median=7.00, p10=4.00, p90=9.00, minimum=0.00
+  inventory_capacity: mean=8.53, median=9.00, p10=7.00, p90=10.00, minimum=5.00
+  mandatory_debt_payment_total: mean=10,000.00, median=10,000.00, p10=10,000.00, p90=10,000.00, minimum=10,000.00
+  optional_debt_payment_total: mean=0.00, median=0.00, p10=0.00, p90=0.00, minimum=0.00
+  total_debt_repayment: mean=10,000.00, median=10,000.00, p10=10,000.00, p90=10,000.00, minimum=10,000.00
+  free_slots: mean=1.74, median=1.00, p10=0.00, p90=4.00, minimum=0.00
+  inventory_cost_basis: mean=30,818.95, median=28,435.50, p10=13,260.10, p90=52,523.80, minimum=0.00
+  inventory_value: mean=40,067.08, median=36,226.00, p10=16,452.20, p90=67,856.10, minimum=0.00
+  shop_purchase_count: mean=26.21, median=26.00, p10=21.00, p90=31.00, minimum=12.00
+  shop_sale_count: mean=19.42, median=19.50, p10=15.00, p90=24.00, minimum=9.00
+  shop_trade_count: mean=45.63, median=46.00, p10=36.00, p90=55.00, minimum=22.00
+  realized_profit: mean=40,171.52, median=37,117.00, p10=19,223.60, p90=64,680.50, minimum=7,655.00
+  mean_margin: mean=0.59, median=0.58, p10=0.45, p90=0.72, minimum=0.32
+  median_margin: mean=0.50, median=0.44, p10=0.27, p90=0.80, minimum=0.15
+  reputation: mean=75.92, median=77.00, p10=41.90, p90=110.00, minimum=-8.00
+  inventory_full_events: mean=10.08, median=9.00, p10=4.00, p90=17.00, minimum=0.00
+  missed_purchase_due_to_inventory: mean=6.55, median=6.00, p10=1.00, p90=13.10, minimum=0.00
+  missed_purchase_due_to_cash: mean=3.32, median=2.50, p10=0.00, p90=8.00, minimum=0.00
+  inventory_expansion_count: mean=3.53, median=4.00, p10=2.00, p90=5.00, minimum=0.00
+  inventory_expansion_spending: mean=30,400.00, median=35,000.00, p10=12,500.00, p90=50,000.00, minimum=0.00
+  total_operating_cost_paid: mean=6,000.00, median=6,000.00, p10=6,000.00, p90=6,000.00, minimum=6,000.00
+  weeks_with_negative_cash: mean=0.59, median=0.00, p10=0.00, p90=2.00, minimum=0.00
+  cash_deficit_events: mean=0.49, median=0.00, p10=0.00, p90=1.00, minimum=0.00
+  minimum_cash: mean=-92.43, median=239.50, p10=-5,807.60, p90=5,115.90, minimum=-8,986.00
+  cash_before_operating_cost_ledger: mean=18,952.57, median=12,088.00, p10=469.60, p90=48,586.00, minimum=-2,986.00
+  gross_assets_before_operating_cost_ledger: mean=59,019.64, median=55,018.50, p10=33,474.70, p90=91,585.40, minimum=17,708.00
+  Capacity distribution: 5=0.8%, 6-9=83.8%, 10-14=15.4%, 15-19=0.0%, 20=0.0%
+  Negative cash now/ever: 31.4%/43.4%
+  Debt fully repaid: 0.0%; completion week mean/median (repaid only): None/None
+  guest_kindness: GENEROUS=7.3%, NORMAL=48.7%, ARGUMENTATIVE=17.7%, RUDE=17.0%, SCAMMER=9.2%
+  guest_level: 1-10=29.7%, 11-30=28.5%, 31-50=20.2%, 51-70=12.3%, 71-90=6.5%, 91-120=2.8%
+  guest_power: VERY_LOW=26.2%, LOW=28.5%, NORMAL=27.2%, HIGH=12.3%, VERY_HIGH=5.8%
+  guest_title: NONE=37.7%, C=28.7%, B=19.2%, A=10.5%, S=3.8%
+  guest_achievement: NONE=35.5%, SOME=32.7%, GOOD=23.1%, VERY_GOOD=8.7%
+Week 4: cash median=1,727 G, inventory value median=41,526 G, net worth median=-31,221 G, reputation median=117.25, trades median=87
+  cash: mean=9,316.43, median=1,727.00, p10=-11,272.50, p90=36,942.30, minimum=-21,258.00
+  debt_remaining: mean=80,000.00, median=80,000.00, p10=80,000.00, p90=80,000.00, minimum=80,000.00
+  gross_assets: mean=55,921.00, median=48,779.00, p10=18,597.20, p90=102,536.40, minimum=-6,522.00
+  net_worth_after_debt: mean=-24,079.00, median=-31,221.00, p10=-61,402.80, p90=22,536.40, minimum=-86,522.00
+  inventory_count: mean=7.79, median=8.00, p10=5.00, p90=10.00, minimum=1.00
+  inventory_capacity: mean=9.79, median=10.00, p10=8.00, p90=11.00, minimum=5.00
+  mandatory_debt_payment_total: mean=20,000.00, median=20,000.00, p10=20,000.00, p90=20,000.00, minimum=20,000.00
+  optional_debt_payment_total: mean=0.00, median=0.00, p10=0.00, p90=0.00, minimum=0.00
+  total_debt_repayment: mean=20,000.00, median=20,000.00, p10=20,000.00, p90=20,000.00, minimum=20,000.00
+  free_slots: mean=2.01, median=2.00, p10=0.00, p90=4.10, minimum=0.00
+  inventory_cost_basis: mean=36,070.55, median=32,758.00, p10=15,984.00, p90=61,074.60, minimum=195.00
+  inventory_value: mean=46,604.57, median=41,525.50, p10=18,426.20, p90=82,302.40, minimum=195.00
+  shop_purchase_count: mean=46.58, median=47.00, p10=36.90, p90=56.00, minimum=21.00
+  shop_sale_count: mean=38.80, median=40.00, p10=30.00, p90=47.00, minimum=17.00
+  shop_trade_count: mean=85.38, median=87.00, p10=65.90, p90=102.00, minimum=38.00
+  realized_profit: mean=83,881.98, median=78,183.00, p10=40,982.20, p90=130,582.80, minimum=19,659.00
+  mean_margin: mean=0.60, median=0.59, p10=0.50, p90=0.70, minimum=0.34
+  median_margin: mean=0.50, median=0.47, p10=0.31, p90=0.75, minimum=0.21
+  reputation: mean=112.99, median=117.25, p10=63.00, p90=159.53, minimum=-44.00
+  inventory_full_events: mean=18.25, median=18.00, p10=9.00, p90=28.10, minimum=3.00
+  missed_purchase_due_to_inventory: mean=13.45, median=13.00, p10=4.00, p90=23.00, minimum=0.00
+  missed_purchase_due_to_cash: mean=10.88, median=9.00, p10=3.00, p90=22.00, minimum=0.00
+  inventory_expansion_count: mean=4.79, median=5.00, p10=3.00, p90=6.00, minimum=0.00
+  inventory_expansion_spending: mean=48,495.00, median=50,000.00, p10=22,500.00, p90=67,500.00, minimum=0.00
+  total_operating_cost_paid: mean=20,000.00, median=20,000.00, p10=20,000.00, p90=20,000.00, minimum=20,000.00
+  weeks_with_negative_cash: mean=1.74, median=2.00, p10=0.00, p90=3.00, minimum=0.00
+  cash_deficit_events: mean=1.28, median=1.00, p10=0.00, p90=3.00, minimum=0.00
+  minimum_cash: mean=-4,963.73, median=-5,062.50, p10=-11,368.60, p90=793.20, minimum=-21,258.00
+  cash_before_operating_cost_ledger: mean=29,316.43, median=21,727.00, p10=8,727.50, p90=56,942.30, minimum=-1,258.00
+  gross_assets_before_operating_cost_ledger: mean=75,921.00, median=68,779.00, p10=38,597.20, p90=122,536.40, minimum=13,478.00
+  Capacity distribution: 5=0.2%, 6-9=40.0%, 10-14=59.4%, 15-19=0.4%, 20=0.0%
+  Negative cash now/ever: 44.0%/77.8%
+  Debt fully repaid: 0.0%; completion week mean/median (repaid only): None/None
+  guest_kindness: GENEROUS=8.3%, NORMAL=50.1%, ARGUMENTATIVE=16.8%, RUDE=15.8%, SCAMMER=8.9%
+  guest_level: 1-10=27.5%, 11-30=27.6%, 31-50=21.0%, 51-70=13.3%, 71-90=7.3%, 91-120=3.4%
+  guest_power: VERY_LOW=24.4%, LOW=27.6%, NORMAL=28.0%, HIGH=13.6%, VERY_HIGH=6.4%
+  guest_title: NONE=28.3%, C=27.6%, B=23.5%, A=15.2%, S=5.4%
+  guest_achievement: NONE=27.0%, SOME=31.6%, GOOD=28.9%, VERY_GOOD=12.5%
+Week 8: cash median=-13,078 G, inventory value median=37,382 G, net worth median=-26,973 G, reputation median=157.00, trades median=162
+  cash: mean=-8,416.34, median=-13,078.00, p10=-42,761.30, p90=26,110.10, minimum=-80,178.00
+  debt_remaining: mean=60,000.00, median=60,000.00, p10=60,000.00, p90=60,000.00, minimum=60,000.00
+  gross_assets: mean=38,674.30, median=33,027.00, p10=-35,743.70, p90=122,246.20, minimum=-75,847.00
+  net_worth_after_debt: mean=-21,325.70, median=-26,973.00, p10=-95,743.70, p90=62,246.20, minimum=-135,847.00
+  inventory_count: mean=7.32, median=8.00, p10=1.00, p90=12.00, minimum=0.00
+  inventory_capacity: mean=11.21, median=11.00, p10=9.00, p90=14.00, minimum=6.00
+  mandatory_debt_payment_total: mean=40,000.00, median=40,000.00, p10=40,000.00, p90=40,000.00, minimum=40,000.00
+  optional_debt_payment_total: mean=0.00, median=0.00, p10=0.00, p90=0.00, minimum=0.00
+  total_debt_repayment: mean=40,000.00, median=40,000.00, p10=40,000.00, p90=40,000.00, minimum=40,000.00
+  free_slots: mean=3.89, median=3.00, p10=0.00, p90=9.00, minimum=0.00
+  inventory_cost_basis: mean=37,972.21, median=30,622.00, p10=3,109.20, p90=83,515.60, minimum=0.00
+  inventory_value: mean=47,090.64, median=37,382.00, p10=2,590.90, p90=108,537.90, minimum=0.00
+  shop_purchase_count: mean=80.32, median=85.00, p10=49.00, p90=103.10, minimum=21.00
+  shop_sale_count: mean=72.99, median=77.00, p10=47.00, p90=93.00, minimum=21.00
+  shop_trade_count: mean=153.31, median=162.00, p10=95.90, p90=197.00, minimum=42.00
+  realized_profit: mean=167,890.87, median=158,839.00, p10=66,417.10, p90=281,408.40, minimum=21,153.00
+  mean_margin: mean=0.61, median=0.60, p10=0.53, p90=0.70, minimum=0.40
+  median_margin: mean=0.48, median=0.45, p10=0.34, p90=0.67, minimum=0.20
+  reputation: mean=139.47, median=157.00, p10=-6.02, p90=255.15, minimum=-151.00
+  inventory_full_events: mean=29.11, median=28.00, p10=15.90, p90=44.10, minimum=4.00
+  missed_purchase_due_to_inventory: mean=22.90, median=22.00, p10=9.00, p90=38.10, minimum=0.00
+  missed_purchase_due_to_cash: mean=37.32, median=30.00, p10=12.00, p90=76.00, minimum=3.00
+  inventory_expansion_count: mean=6.21, median=6.00, p10=4.00, p90=9.00, minimum=1.00
+  inventory_expansion_spending: mean=76,335.00, median=67,500.00, p10=35,000.00, p90=135,000.00, minimum=5,000.00
+  total_operating_cost_paid: mean=72,000.00, median=72,000.00, p10=72,000.00, p90=72,000.00, minimum=72,000.00
+  weeks_with_negative_cash: mean=4.64, median=5.00, p10=2.00, p90=7.00, minimum=0.00
+  cash_deficit_events: mean=3.13, median=3.00, p10=1.00, p90=5.00, minimum=0.00
+  minimum_cash: mean=-20,011.04, median=-15,809.00, p10=-42,761.30, p90=-5,392.40, minimum=-80,178.00
+  cash_before_operating_cost_ledger: mean=63,583.66, median=58,922.00, p10=29,238.70, p90=98,110.10, minimum=-8,178.00
+  gross_assets_before_operating_cost_ledger: mean=110,674.30, median=105,027.00, p10=36,256.30, p90=194,246.20, minimum=-3,847.00
+  Capacity distribution: 5=0.0%, 6-9=20.0%, 10-14=75.6%, 15-19=4.4%, 20=0.0%
+  Negative cash now/ever: 69.6%/97.2%
+  Debt fully repaid: 0.0%; completion week mean/median (repaid only): None/None
+  guest_kindness: GENEROUS=9.2%, NORMAL=50.8%, ARGUMENTATIVE=16.3%, RUDE=15.0%, SCAMMER=8.8%
+  guest_level: 1-10=25.9%, 11-30=26.7%, 31-50=21.3%, 51-70=14.2%, 71-90=7.9%, 91-120=4.1%
+  guest_power: VERY_LOW=22.9%, LOW=26.7%, NORMAL=28.3%, HIGH=15.0%, VERY_HIGH=7.1%
+  guest_title: NONE=20.1%, C=24.3%, B=26.4%, A=20.6%, S=8.7%
+  guest_achievement: NONE=19.0%, SOME=28.3%, GOOD=34.5%, VERY_GOOD=18.2%
+Week 12: cash median=-59,700 G, inventory value median=9,788 G, net worth median=-91,415 G, reputation median=100.88, trades median=195
+  cash: mean=-57,452.20, median=-59,699.50, p10=-142,368.80, p90=19,509.90, minimum=-181,455.00
+  debt_remaining: mean=40,000.00, median=40,000.00, p10=40,000.00, p90=40,000.00, minimum=40,000.00
+  gross_assets: mean=-22,498.98, median=-51,415.00, p10=-139,474.40, p90=129,884.30, minimum=-179,847.00
+  net_worth_after_debt: mean=-62,498.98, median=-91,415.00, p10=-179,474.40, p90=89,884.30, minimum=-219,847.00
+  inventory_count: mean=4.96, median=3.00, p10=0.00, p90=13.00, minimum=0.00
+  inventory_capacity: mean=11.83, median=11.00, p10=9.00, p90=15.00, minimum=6.00
+  mandatory_debt_payment_total: mean=60,000.00, median=60,000.00, p10=60,000.00, p90=60,000.00, minimum=60,000.00
+  optional_debt_payment_total: mean=0.00, median=0.00, p10=0.00, p90=0.00, minimum=0.00
+  total_debt_repayment: mean=60,000.00, median=60,000.00, p10=60,000.00, p90=60,000.00, minimum=60,000.00
+  free_slots: mean=6.87, median=8.00, p10=1.00, p90=11.00, minimum=0.00
+  inventory_cost_basis: mean=29,358.14, median=10,646.00, p10=0.00, p90=85,666.00, minimum=0.00
+  inventory_value: mean=34,953.22, median=9,787.50, p10=0.00, p90=102,672.80, minimum=0.00
+  shop_purchase_count: mean=99.99, median=99.00, p10=49.00, p90=151.10, minimum=21.00
+  shop_sale_count: mean=95.03, median=97.00, p10=48.00, p90=140.00, minimum=21.00
+  shop_trade_count: mean=195.01, median=195.00, p10=97.00, p90=291.10, minimum=42.00
+  realized_profit: mean=230,150.94, median=194,847.50, p10=66,934.30, p90=439,146.70, minimum=21,153.00
+  mean_margin: mean=0.60, median=0.60, p10=0.53, p90=0.68, minimum=0.40
+  median_margin: mean=0.47, median=0.44, p10=0.34, p90=0.67, minimum=0.19
+  reputation: mean=87.13, median=100.88, p10=-148.97, p90=295.27, minimum=-308.00
+  inventory_full_events: mean=34.14, median=33.00, p10=17.00, p90=53.00, minimum=6.00
+  missed_purchase_due_to_inventory: mean=27.31, median=26.00, p10=11.00, p90=46.00, minimum=0.00
+  missed_purchase_due_to_cash: mean=82.78, median=81.00, p10=24.00, p90=143.00, minimum=6.00
+  inventory_expansion_count: mean=6.83, median=6.00, p10=4.00, p90=10.00, minimum=1.00
+  inventory_expansion_spending: mean=92,245.00, median=67,500.00, p10=35,000.00, p90=162,500.00, minimum=5,000.00
+  total_operating_cost_paid: mean=156,000.00, median=156,000.00, p10=156,000.00, p90=156,000.00, minimum=156,000.00
+  weeks_with_negative_cash: mean=8.12, median=9.00, p10=4.90, p90=11.00, minimum=0.00
+  cash_deficit_events: mean=4.35, median=4.00, p10=2.00, p90=7.00, minimum=0.00
+  minimum_cash: mean=-68,475.13, median=-59,906.50, p10=-142,368.80, p90=-13,577.80, minimum=-181,455.00
+  cash_before_operating_cost_ledger: mean=98,547.80, median=96,300.50, p10=13,631.20, p90=175,509.90, minimum=-25,455.00
+  gross_assets_before_operating_cost_ledger: mean=133,501.02, median=104,585.00, p10=16,525.60, p90=285,884.30, minimum=-23,847.00
+  Capacity distribution: 5=0.0%, 6-9=18.4%, 10-14=64.4%, 15-19=17.0%, 20=0.2%
+  Negative cash now/ever: 83.4%/99.6%
+  Debt fully repaid: 0.0%; completion week mean/median (repaid only): None/None
+  guest_kindness: GENEROUS=8.5%, NORMAL=49.4%, ARGUMENTATIVE=17.0%, RUDE=16.1%, SCAMMER=9.0%
+  guest_level: 1-10=27.7%, 11-30=27.1%, 31-50=20.5%, 51-70=13.4%, 71-90=7.5%, 91-120=3.8%
+  guest_power: VERY_LOW=24.2%, LOW=27.1%, NORMAL=27.5%, HIGH=14.2%, VERY_HIGH=6.9%
+  guest_title: NONE=17.7%, C=22.6%, B=26.7%, A=22.5%, S=10.5%
+  guest_achievement: NONE=16.8%, SOME=26.5%, GOOD=35.9%, VERY_GOOD=20.8%
+Overall: purchase mean=4,780 G, sale mean=7,142 G, margin mean/median=60.7%/44.2%, holding=4.9 days, sell-through=95.0%, buyer success=32.7%, cash misses=41388
+Buyer failures: NO_COMPATIBLE_ITEM=66140, PRICE_NEGOTIATION_FAILURE=24437, NO_INTEREST=7280
+Preference: MATCH success=64.3% fit=66.2 hold=5.1d margin=61.4%, NON_PREFERRED success=56.6% fit=60.5 hold=4.6d margin=60.1%
+Tier fit: 0.00-0.25 n=17848 success=32.6% fit=44.4, 0.25-0.50 n=5314 success=43.6% fit=51.1, 0.50-0.75 n=16190 success=58.9% fit=59.7, 0.75-1.00 n=39878 success=74.8% fit=74.2
+Long inventory: 30+d=23.3%, 60+d=5.8%, 90+d=0.0%
+First expansion (expanded trials only): mean day=4.016, median day=3.0, mean week=1.094, expanded trials=100.0%
+Capacity mean residence days (uniform visit spacing): {'5': 3.558190476190476, '6': 1.974940476190476, '7': 3.921904761904762, '8': 8.428178571428573, '9': 17.451261904761914, '10': 16.148773809523817, '11': 12.468166666666676, '12': 8.231940476190479, '13': 5.173511904761906, '14': 3.065761904761905, '15': 1.6851547619047618, '16': 0.6373333333333334, '17': 0.7404999999999998, '18': 0.34891666666666676, '19': 0.14832142857142858, '20': 0.017142857142857154}
+Expansion costs TEMPORARY: {'6': 5000, '7': 7500, '8': 10000, '9': 12500, '10': 15000, '11': 17500, '12': 20000, '13': 22500, '14': 25000, '15': 27500, '16': 30000, '17': 32500, '18': 35000, '19': 37500, '20': 40000}
+Scheduled operating costs total: 156000

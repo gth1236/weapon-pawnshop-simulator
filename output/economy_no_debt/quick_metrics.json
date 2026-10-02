@@ -1,0 +1,27 @@
+{
+  "reference_purchase_price": 5338.1908532041725,
+  "week8": {
+    "strict_buy": 0.422,
+    "expand_and_buy": 0.222,
+    "next_operating": 0.334,
+    "next_required": 0.334
+  },
+  "previous_week8": {
+    "strict_buy": 0.224,
+    "expand_and_buy": 0.09,
+    "next_operating": 0.15,
+    "next_required": 0.122
+  },
+  "activity": {
+    "no_buys_week12": 0.222,
+    "no_buys_weeks9_12": 0.058,
+    "week12_buys": 8.248,
+    "week12_profit": 27611.684
+  },
+  "previous_activity": {
+    "no_buys_week12": 0.626,
+    "no_buys_weeks9_12": 0.358,
+    "week12_buys": 3.82,
+    "week12_profit": 13459.036
+  }
+}

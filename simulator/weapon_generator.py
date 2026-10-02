@@ -1,5 +1,6 @@
 from .config import weighted_choice
-from .models import StatLine, WeaponKnownState, WeaponTrueState
+from .models import StatLine, WeaponTrueState
+from .appraisal import create_player_knowledge, isolated_appraisal_rng
 
 
 def _bracket(value: int) -> str:
@@ -101,4 +102,4 @@ def generate_weapon(rng, config, guest, market_state):
         stability, _bracket(stability),
         tuple(_stat_lines(rng, numeric, item_class, tier, normal_grade, high_grade, unique)), tuple(amp_lines),
     )
-    return weapon, WeaponKnownState()
+    return weapon, create_player_knowledge(config, weapon, isolated_appraisal_rng(rng))
