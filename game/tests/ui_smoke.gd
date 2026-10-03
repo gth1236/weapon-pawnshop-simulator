@@ -54,7 +54,7 @@ func run() -> void:
 	check(scene.day.phase == "SELLER" and scene.inventory_button.disabled, "Seller enters")
 	await capture("main_play")
 	audit_ui(scene)
-	await click_button(scene.appraisal_button)
+	await click_button(scene.table_button)
 	var detail = scene.detail
 	check(detail.visible and detail.item != null, "Dedicated appraisal view")
 	if not detail.visible or detail.item == null:
@@ -62,10 +62,21 @@ func run() -> void:
 		return
 	check(not detail.row_buttons.has("special_property") and detail.toggles.has("class_popularity") and detail.toggles.has("class_balance"), "Retired field absent and market judgements present")
 	var before = detail.estimate_label.text
+	for price_label in [detail.asking_label, detail.estimate_label]:
+		var font = price_label.get_theme_font("font")
+		var font_size = price_label.get_theme_font_size("font_size")
+		check(font.get_string_size("999,999,999 골드", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x < price_label.size.x, "Large price fits padded label")
 	var actual = PriceCalculator.calculate(scene.day.config, detail.item, scene.day.market).true_appraised_price
 	await capture("appraisal_before")
 	for section in PlayerJudgement.SECTIONS:
-		detail.row_buttons[section].pressed.emit()
+		var row = detail.row_buttons[section]
+		check(row.get_theme_stylebox("normal").bg_color.a == 0, "Detail row has no resting background")
+		var motion = InputEventMouseMotion.new()
+		motion.position = row.get_global_rect().get_center()
+		root.push_input(motion, true)
+		await process_frame
+		check(row.is_hovered(), "Detail row receives hover")
+		await click_button(row)
 		if section in AppraisalService.FIELDS:
 			check(detail.toggles[section].disabled, "Unrevealed include disabled")
 			check(detail.grade_buttons[0].disabled, "Unrevealed judgement disabled")

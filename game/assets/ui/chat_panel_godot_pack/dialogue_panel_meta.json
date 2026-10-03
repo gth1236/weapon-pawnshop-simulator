@@ -1,0 +1,22 @@
+{
+  "source_size": [
+    2017,
+    780
+  ],
+  "cropped_size": [
+    1993,
+    547
+  ],
+  "crop_box_from_source": [
+    13,
+    116,
+    2006,
+    663
+  ],
+  "patch_margins": {
+    "left": 120,
+    "right": 120,
+    "top": 235,
+    "bottom": 115
+  }
+}

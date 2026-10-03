@@ -1,0 +1,23 @@
+{
+  "source_path": "/mnt/data/ghostwriter_images/context/328d0715-0421-5eb5-a492-eb4578fe7b23.png",
+  "source_size": [
+    768,
+    512
+  ],
+  "cropped_size": [
+    683,
+    348
+  ],
+  "crop_box_from_source": [
+    41,
+    88,
+    724,
+    436
+  ],
+  "patch_margins": {
+    "left": 90,
+    "right": 90,
+    "top": 70,
+    "bottom": 70
+  }
+}

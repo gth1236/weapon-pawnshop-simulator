@@ -125,6 +125,8 @@ func run() -> void:
 	current.buy()
 	check(current.phase == "COMPLETE" and scene.receipt.visible, "Final failed negotiation triggers receipt")
 	scene.queue_free()
-	await process_frame
+	# Give the audio mixer time to release voices before terminating the test.
+	root.get_node("Sfx").player.stop()
+	await create_timer(0.2).timeout
 	print("NEGOTIATION CHECKS: %d | FAILURES: %d" % [checks, failures])
 	quit(0 if failures == 0 else 1)

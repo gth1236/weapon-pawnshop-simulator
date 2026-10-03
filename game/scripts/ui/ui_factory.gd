@@ -9,10 +9,10 @@ const ACCENT = Color("d7b477")
 
 static func setup_theme(root: Control) -> void:
 	var theme = Theme.new()
-	var font = SystemFont.new()
-	font.font_names = PackedStringArray(["Malgun Gothic", "Noto Sans CJK KR", "sans-serif"])
-	theme.default_font = font
+	theme.default_font = VisualAssets.FONT
 	theme.default_font_size = 24
+	theme.set_color("font_outline_color", "Label", Color(0.08, 0.06, 0.05, 0.8))
+	theme.set_constant("outline_size", "Label", 2)
 	root.theme = theme
 
 static func at(node: Control, rect: Rect2) -> Control:
@@ -31,6 +31,12 @@ static func backdrop(parent: Control) -> void:
 
 static func panel(parent: Node, rect: Rect2, color = PANEL) -> Panel:
 	var node = Panel.new()
+	if VisualAssets.enabled(parent):
+		node.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		parent.add_child(node)
+		at(node, rect)
+		VisualAssets.patch(node, VisualAssets.BUTTON, Rect2(Vector2.ZERO, rect.size), Vector4(90, 70, 90, 70), 0.28)
+		return node
 	var style = StyleBoxFlat.new()
 	style.bg_color = color
 	style.border_color = Color("42596c")
@@ -56,8 +62,29 @@ static func button(parent: Node, text: String, action: Callable) -> Button:
 	var node = Button.new()
 	node.text = text
 	node.custom_minimum_size.y = 44
-	node.pressed.connect(action)
+	node.pressed.connect(func(): Sfx.perform(action))
 	parent.add_child(node)
+	if VisualAssets.enabled(parent):
+		VisualAssets.skin_button(node)
+	return node
+
+static func detail_row(parent: Node, action: Callable) -> Button:
+	var node = Button.new()
+	node.pressed.connect(func(): Sfx.perform(action))
+	parent.add_child(node)
+	node.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	for state in ["normal", "disabled", "hover", "pressed", "focus"]:
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(1.0, 0.88, 0.65, 0.08) if state == "hover" else Color(1.0, 0.88, 0.65, 0.14) if state == "pressed" else Color.TRANSPARENT
+		style.content_margin_left = 20
+		style.content_margin_right = 12
+		style.set_corner_radius_all(5)
+		if state == "focus":
+			style.border_color = Color(1.0, 0.88, 0.65, 0.3)
+			style.set_border_width_all(1)
+		node.add_theme_stylebox_override(state, style)
+	node.add_theme_color_override("font_hover_color", Color("fff3de"))
+	node.add_theme_color_override("font_pressed_color", Color("ead2a3"))
 	return node
 
 static func clear(parent: Node) -> void:

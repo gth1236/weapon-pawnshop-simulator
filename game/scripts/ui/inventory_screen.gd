@@ -25,7 +25,8 @@ func _ready() -> void:
 	confirmation.title = "고물상에 처분할까요?"
 	confirmation.get_ok_button().text = "처분하기"
 	confirmation.get_cancel_button().text = "취소"
-	confirmation.confirmed.connect(confirm_scrap)
+	confirmation.confirmed.connect(func(): Sfx.perform(confirm_scrap))
+	confirmation.canceled.connect(func(): Sfx.play("click"))
 	add_child(confirmation)
 
 func open(day: DayController) -> void:

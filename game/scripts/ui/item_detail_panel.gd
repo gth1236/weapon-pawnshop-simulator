@@ -30,6 +30,7 @@ var asking_label: Label
 var negotiation_label: Label
 var grade_area: Control
 var grade_section = ""
+var weapon_image: TextureRect
 
 func show_item(weapon: WeaponData, balance: Dictionary, current_market: Dictionary, seller = true, words = "보유한 무기를 자세히 살펴보세요.", negotiation_state: SellerNegotiation = null) -> void:
 	generation += 1
@@ -51,37 +52,50 @@ func close_panel() -> void:
 	closed.emit()
 
 func rebuild() -> void:
+	set_meta("painted_ui", is_seller)
 	UIFactory.clear(self)
 	row_buttons.clear()
 	toggles.clear()
 	grade_buttons.clear()
 	grade_section = ""
 	UIFactory.backdrop(self)
+	if is_seller:
+		VisualAssets.image(self, VisualAssets.APPRAISAL, Rect2(0, 0, 1920, 1080))
 	UIFactory.at(UIFactory.label(self, "무기 감정", 42), Rect2(32, 26, 480, 70))
 	back_button = UIFactory.button(self, "상점으로" if is_seller else "재고로 돌아가기", close_panel)
 	UIFactory.at(back_button, Rect2(1628, 26, 260, 62))
 	negotiation_label = UIFactory.label(self, "", 24)
 	UIFactory.at(negotiation_label, Rect2(40, 111, 480, 85))
-	UIFactory.panel(self, Rect2(32, 200, 492, 510))
-	var image_label = UIFactory.label(self, "%s\n\n무기 이미지\n임시 표시" % TextCatalog.weapon(item.known.item_type), 38)
-	UIFactory.at(image_label, Rect2(65, 330, 426, 290))
-	image_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UIFactory.panel(self, Rect2(32, 760, 492, 290))
-	UIFactory.at(UIFactory.label(self, "손님의 말" if is_seller else "보유 무기", 30), Rect2(54, 782, 442, 52))
+	weapon_image = null
+	if is_seller:
+		weapon_image = VisualAssets.image(self, VisualAssets.WEAPONS.get(item.known.item_type), Rect2(48, 216, 460, 460))
+		VisualAssets.patch(self, VisualAssets.DIALOGUE, Rect2(32, 760, 492, 290), Vector4(120, 235, 120, 115), 0.28)
+	else:
+		UIFactory.panel(self, Rect2(32, 200, 492, 510))
+		var image_label = UIFactory.label(self, "%s\n\n무기 이미지\n임시 표시" % TextCatalog.weapon(item.known.item_type), 38)
+		UIFactory.at(image_label, Rect2(65, 330, 426, 290))
+		image_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		UIFactory.panel(self, Rect2(32, 760, 492, 290))
+	UIFactory.at(UIFactory.label(self, "손님의 말" if is_seller else "보유 무기", 26), Rect2(54, 765, 442, 44))
 	dialogue_label = UIFactory.label(self, customer_words, 26)
-	UIFactory.at(dialogue_label, Rect2(54, 850, 442, 176))
-	UIFactory.panel(self, Rect2(554, 26, 802, 1024))
-	UIFactory.at(UIFactory.label(self, TextCatalog.weapon(item.known.item_type), 40), Rect2(580, 50, 750, 62))
-	UIFactory.at(UIFactory.label(self, "무기 종류: %s  /  기준 직업: %s\n아이템 등급: %d" % [TextCatalog.weapon(item.known.item_type), TextCatalog.CLASSES[item.known.required_class], item.known.tier], 25), Rect2(580, 126, 750, 82))
+	UIFactory.at(dialogue_label, Rect2(60, 825, 434, 201))
+	if is_seller:
+		# Reuse authored header/body regions independently to fit all nine rows.
+		VisualAssets.patch(self, VisualAssets.ITEM_INTERFACE, Rect2(554, 26, 802, 185), Vector4(42, 30, 42, 30), 1.0, Rect2(28, 22, 780, 172))
+		VisualAssets.patch(self, VisualAssets.ITEM_INTERFACE, Rect2(554, 213, 802, 837), Vector4(42, 30, 42, 30), 1.0, Rect2(28, 198, 780, 660))
+	else:
+		UIFactory.panel(self, Rect2(554, 26, 802, 1024))
+	UIFactory.at(UIFactory.label(self, TextCatalog.weapon(item.known.item_type), 40), Rect2(600, 50, 712, 62))
+	UIFactory.at(UIFactory.label(self, "무기 종류: %s  /  기준 직업: %s\n아이템 등급: %d" % [TextCatalog.weapon(item.known.item_type), TextCatalog.CLASSES[item.known.required_class], item.known.tier], 25), Rect2(600, 126, 712, 82))
 	var public_stats = []
 	for line in item.known.stat_lines + item.known.amplification_lines:
 		public_stats.append(TextCatalog.stat(line))
 	public_stats_label = UIFactory.label(self, "공개 능력치\n" + ("  ·  ".join(public_stats) if not public_stats.is_empty() else "부여된 능력치 없음"), 23)
-	UIFactory.at(public_stats_label, Rect2(580, 219, 750, 116))
+	UIFactory.at(public_stats_label, Rect2(598, 246, 714, 89))
 	for i in range(PlayerJudgement.SECTIONS.size()):
 		var section = PlayerJudgement.SECTIONS[i]
 		var y = 349 + i * 76
-		var row = UIFactory.button(self, "", func(): select_section(section))
+		var row = UIFactory.detail_row(self, func(): select_section(section))
 		row.add_theme_font_size_override("font_size", 21)
 		UIFactory.at(row, Rect2(578, y, 550, 70))
 		row_buttons[section] = row
@@ -89,7 +103,10 @@ func rebuild() -> void:
 		toggle.text = "가격 반영"
 		toggle.add_theme_font_size_override("font_size", 23)
 		toggle.toggled.connect(func(enabled):
+			var was_included = item.judgement.entries[section].included
 			item.judgement.include(section, enabled, item.known.player_view())
+			if was_included != item.judgement.entries[section].included:
+				Sfx.play("check")
 			refresh_controls())
 		add_child(toggle)
 		UIFactory.at(toggle, Rect2(1143, y + 16, 190, 50))
@@ -106,11 +123,15 @@ func rebuild() -> void:
 	judgement_status = UIFactory.label(self, "", 22)
 	UIFactory.at(judgement_status, Rect2(1410, 590, 455, 76))
 	UIFactory.panel(self, Rect2(1386, 718, 502, 91))
-	asking_label = UIFactory.label(self, "", 28)
-	UIFactory.at(asking_label, Rect2(1410, 726, 458, 78))
+	asking_label = UIFactory.label(self, "", 24)
+	UIFactory.at(asking_label, Rect2(1430, 734, 414, 59))
+	asking_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	asking_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	UIFactory.panel(self, Rect2(1386, 832, 502, 91))
-	estimate_label = UIFactory.label(self, "", 28)
-	UIFactory.at(estimate_label, Rect2(1410, 839, 458, 78))
+	estimate_label = UIFactory.label(self, "", 24)
+	UIFactory.at(estimate_label, Rect2(1430, 848, 414, 59))
+	estimate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	estimate_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	buy_button = UIFactory.button(self, "이 가격으로 매입 제안", func(): buy_requested.emit())
 	UIFactory.at(buy_button, Rect2(1386, 948, 320, 78))
 	refuse_button = UIFactory.button(self, "매입 거절", func(): refuse_requested.emit())
@@ -197,6 +218,7 @@ func appraise(section: String) -> void:
 	if busy or not AppraisalService.FIELDS.has(section):
 		return
 	busy = true
+	Sfx.play("appraisal")
 	var ticket = generation
 	row_buttons[section].text = TextCatalog.SECTIONS[section] + "\n도구로 조사하는 중 · · ·"
 	judgement_result.text = "감정 도구로 확인하고 있습니다…"
