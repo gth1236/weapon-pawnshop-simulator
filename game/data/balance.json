@@ -1,0 +1,1203 @@
+{
+  "metadata": {
+    "authoritative_spec": "rpg_weapon_pawnshop_core_system_spec_v0_2.txt",
+    "temporary_values": [
+      "weapon.special_stat_weights",
+      "weapon.amplification_quality_weights",
+      "weapon.processing_load",
+      "weapon.stability_by_processing_load",
+      "numeric_stats.*",
+      "progression.reputation.*",
+      "progression.trade_count.*",
+      "reputation.positive_decay",
+      "weapon.foreign_mode_weights",
+      "weapon.foreign_raw_*",
+      "weapon.market_processing_load",
+      "economy.visitor_roles",
+      "economy.buyer_fit",
+      "economy.interest_bands",
+      "economy.pricing",
+      "simulation_policies.*",
+      "economy.debt_repayment.policies.moderate",
+      "economy.debt_repayment.policies.aggressive",
+      "economy.daily_visitors",
+      "economy.sale_reputation"
+    ]
+  },
+  "guest": {
+    "classes": [
+      "WARRIOR",
+      "MAGE",
+      "ROGUE",
+      "ARCHER",
+      "GUNNER",
+      "CLERIC"
+    ],
+    "tendencies": [
+      "VERY_CARELESS",
+      "SLIGHTLY_CARELESS",
+      "SLIGHTLY_CAUTIOUS",
+      "VERY_CAUTIOUS"
+    ],
+    "knowledge": [
+      "NONE",
+      "SOME",
+      "HIGH"
+    ],
+    "purposes": [
+      "EMERGENCY_CASH",
+      "UPGRADE_PURCHASE",
+      "GREEDY_SELLING"
+    ],
+    "tier_by_level": {
+      "1-10": {
+        "1": 0.8,
+        "2": 0.2
+      },
+      "11-30": {
+        "1": 0.6,
+        "2": 0.3,
+        "3": 0.1
+      },
+      "31-50": {
+        "1": 0.2,
+        "2": 0.4,
+        "3": 0.4
+      },
+      "51-70": {
+        "2": 0.2,
+        "3": 0.4,
+        "4": 0.4
+      },
+      "71-90": {
+        "3": 0.3,
+        "4": 0.5,
+        "5": 0.2
+      },
+      "91-120": {
+        "4": 0.6,
+        "5": 0.4
+      }
+    },
+    "stat_grade_by_power": {
+      "VERY_LOW": {
+        "NONE": 0.3,
+        "MIXED": 0.5,
+        "ADEQUATE": 0.2,
+        "EXCELLENT": 0.0
+      },
+      "LOW": {
+        "NONE": 0.1,
+        "MIXED": 0.4,
+        "ADEQUATE": 0.4,
+        "EXCELLENT": 0.1
+      },
+      "NORMAL": {
+        "NONE": 0.0,
+        "MIXED": 0.3,
+        "ADEQUATE": 0.5,
+        "EXCELLENT": 0.2
+      },
+      "HIGH": {
+        "NONE": 0.0,
+        "MIXED": 0.1,
+        "ADEQUATE": 0.4,
+        "EXCELLENT": 0.5
+      },
+      "VERY_HIGH": {
+        "NONE": 0.0,
+        "MIXED": 0.0,
+        "ADEQUATE": 0.2,
+        "EXCELLENT": 0.8
+      }
+    },
+    "unique_by_tendency": {
+      "VERY_CARELESS": {
+        "NONE": 0.6,
+        "LOW": 0.4,
+        "HIGH": 0.0
+      },
+      "SLIGHTLY_CARELESS": {
+        "NONE": 0.4,
+        "LOW": 0.4,
+        "HIGH": 0.2
+      },
+      "SLIGHTLY_CAUTIOUS": {
+        "NONE": 0.2,
+        "LOW": 0.4,
+        "HIGH": 0.4
+      },
+      "VERY_CAUTIOUS": {
+        "NONE": 0.0,
+        "LOW": 0.4,
+        "HIGH": 0.6
+      }
+    },
+    "reinforce_by_tendency": {
+      "VERY_CARELESS": {
+        "PERFECT": 0.1,
+        "GOOD": 0.3,
+        "MIXED": 0.4,
+        "BAD": 0.2
+      },
+      "SLIGHTLY_CARELESS": {
+        "PERFECT": 0.2,
+        "GOOD": 0.4,
+        "MIXED": 0.3,
+        "BAD": 0.1
+      },
+      "SLIGHTLY_CAUTIOUS": {
+        "PERFECT": 0.3,
+        "GOOD": 0.5,
+        "MIXED": 0.2,
+        "BAD": 0.0
+      },
+      "VERY_CAUTIOUS": {
+        "PERFECT": 0.6,
+        "GOOD": 0.4,
+        "MIXED": 0.0,
+        "BAD": 0.0
+      }
+    },
+    "refining_band_by_achievement": {
+      "NONE": {
+        "1-4": 0.8,
+        "5-7": 0.2,
+        "8-10": 0.0
+      },
+      "SOME": {
+        "1-4": 0.6,
+        "5-7": 0.35,
+        "8-10": 0.05
+      },
+      "GOOD": {
+        "1-4": 0.4,
+        "5-7": 0.5,
+        "8-10": 0.1
+      },
+      "VERY_GOOD": {
+        "1-4": 0.3,
+        "5-7": 0.5,
+        "8-10": 0.2
+      }
+    },
+    "amplification_count_by_title": {
+      "NONE": {
+        "UNAPPLIED": 0.4,
+        "ZERO_LINE": 0.4,
+        "ONE_LINE": 0.2,
+        "TWO_LINE": 0.0,
+        "THREE_LINE": 0.0
+      },
+      "C": {
+        "UNAPPLIED": 0.2,
+        "ZERO_LINE": 0.4,
+        "ONE_LINE": 0.3,
+        "TWO_LINE": 0.1,
+        "THREE_LINE": 0.0
+      },
+      "B": {
+        "UNAPPLIED": 0.2,
+        "ZERO_LINE": 0.1,
+        "ONE_LINE": 0.4,
+        "TWO_LINE": 0.2,
+        "THREE_LINE": 0.1
+      },
+      "A": {
+        "UNAPPLIED": 0.1,
+        "ZERO_LINE": 0.0,
+        "ONE_LINE": 0.3,
+        "TWO_LINE": 0.4,
+        "THREE_LINE": 0.2
+      },
+      "S": {
+        "UNAPPLIED": 0.0,
+        "ZERO_LINE": 0.0,
+        "ONE_LINE": 0.0,
+        "TWO_LINE": 0.4,
+        "THREE_LINE": 0.6
+      }
+    }
+  },
+  "weapon": {
+    "compatibility_weights": {
+      "compatible": 0.8,
+      "incompatible": 0.2
+    },
+    "class_weapon_pools": {
+      "WARRIOR": [
+        "one_handed_sword",
+        "greatsword",
+        "spear",
+        "axe"
+      ],
+      "MAGE": [
+        "staff",
+        "wand",
+        "grimoire"
+      ],
+      "ROGUE": [
+        "dagger",
+        "throwing_weapon"
+      ],
+      "ARCHER": [
+        "bow",
+        "crossbow"
+      ],
+      "GUNNER": [
+        "gun",
+        "heavy_weapon"
+      ],
+      "CLERIC": [
+        "staff",
+        "gauntlet",
+        "mace"
+      ]
+    },
+    "special_stat_weights": {
+      "HIGH_RELEVANT": 0.2,
+      "RELEVANT": 0.4,
+      "NONE_RELEVANT": 0.4
+    },
+    "amplification_quality_weights": {
+      "LOW": 0.5,
+      "HIGH": 0.5
+    },
+    "processing_load": {
+      "reinforcement": {
+        "PERFECT": 3,
+        "GOOD": 2,
+        "MIXED": 1,
+        "BAD": 0,
+        "UNENHANCED": 0
+      },
+      "refining_level_multiplier": 1,
+      "amplification": {
+        "UNAPPLIED": 0,
+        "ZERO_LINE": 1,
+        "ONE_LINE": 2,
+        "TWO_LINE": 3,
+        "THREE_LINE": 4
+      }
+    },
+    "stability_by_processing_load": {
+      "0-4": {
+        "0-19": 0.0,
+        "20-39": 0.0,
+        "40-59": 0.05,
+        "60-79": 0.15,
+        "80-99": 0.4,
+        "100-100": 0.4
+      },
+      "5-8": {
+        "0-19": 0.0,
+        "20-39": 0.05,
+        "40-59": 0.15,
+        "60-79": 0.4,
+        "80-99": 0.3,
+        "100-100": 0.1
+      },
+      "9-12": {
+        "0-19": 0.05,
+        "20-39": 0.15,
+        "40-59": 0.35,
+        "60-79": 0.3,
+        "80-99": 0.15,
+        "100-100": 0.0
+      },
+      "13-17": {
+        "0-19": 0.2,
+        "20-39": 0.35,
+        "40-59": 0.3,
+        "60-79": 0.15,
+        "80-99": 0.0,
+        "100-100": 0.0
+      },
+      "18-20": {
+        "0-19": 0.35,
+        "20-39": 0.4,
+        "40-59": 0.2,
+        "60-79": 0.05,
+        "80-99": 0,
+        "100-100": 0
+      }
+    },
+    "foreign_mode_weights": {
+      "FOREIGN_RAW": 0.9,
+      "FOREIGN_WORKED": 0.1
+    },
+    "foreign_raw_normal_stat_weights": {
+      "NONE": 0.1,
+      "MIXED": 0.4,
+      "ADEQUATE": 0.4,
+      "EXCELLENT": 0.1
+    },
+    "foreign_raw_high_stat_weights": {
+      "NONE": 0.15,
+      "LOW": 0.4,
+      "ADEQUATE": 0.35,
+      "EXCELLENT": 0.1
+    },
+    "foreign_raw_unique_weights": {
+      "NONE": 0.8,
+      "LOW": 0.18,
+      "HIGH": 0.02
+    },
+    "market_processing_load": {
+      "class_popularity": {
+        "POPULAR": 2,
+        "NORMAL": 1,
+        "UNPOPULAR": 0
+      },
+      "class_power": {
+        "STRONG": 1,
+        "NORMAL": 0,
+        "WEAK": 0
+      }
+    }
+  },
+  "numeric_stats": {
+    "temporary": true,
+    "class_profiles": {
+      "WARRIOR": [
+        "strength",
+        "attack"
+      ],
+      "MAGE": [
+        "intelligence",
+        "magic_power"
+      ],
+      "ROGUE": [
+        "luck",
+        "attack"
+      ],
+      "ARCHER": [
+        "dexterity",
+        "attack"
+      ],
+      "GUNNER": [
+        "dexterity",
+        "attack"
+      ],
+      "CLERIC": [
+        "divine_power",
+        "magic_power"
+      ]
+    },
+    "normal_reference": {
+      "1": 10,
+      "2": 18,
+      "3": 30,
+      "4": 48,
+      "5": 72
+    },
+    "high_reference": {
+      "1": 12,
+      "2": 22,
+      "3": 38,
+      "4": 60,
+      "5": 90
+    },
+    "normal_ranges": {
+      "MIXED": [
+        0.35,
+        0.55
+      ],
+      "ADEQUATE": [
+        0.7,
+        0.9
+      ],
+      "EXCELLENT": [
+        1.0,
+        1.2
+      ]
+    },
+    "high_ranges": {
+      "LOW": [
+        0.35,
+        0.55
+      ],
+      "ADEQUATE": [
+        0.7,
+        0.9
+      ],
+      "EXCELLENT": [
+        1.0,
+        1.2
+      ]
+    },
+    "normal_stat_ids": [
+      "strength",
+      "dexterity",
+      "luck",
+      "intelligence",
+      "divine_power"
+    ],
+    "unique_ranges": {
+      "critical_chance": {
+        "LOW": [
+          2.0,
+          5.0
+        ],
+        "HIGH": [
+          6.0,
+          10.0
+        ]
+      },
+      "critical_damage": {
+        "LOW": [
+          5.0,
+          12.0
+        ],
+        "HIGH": [
+          13.0,
+          25.0
+        ]
+      },
+      "armor_penetration": {
+        "LOW": [
+          3.0,
+          8.0
+        ],
+        "HIGH": [
+          9.0,
+          18.0
+        ]
+      },
+      "element_damage": {
+        "LOW": [
+          4.0,
+          10.0
+        ],
+        "HIGH": [
+          11.0,
+          22.0
+        ]
+      }
+    },
+    "none_high_opposite_chance": 0.5,
+    "irrelevant_high_range": [
+      0.35,
+      0.55
+    ],
+    "amplification_ranges": {
+      "LOW": [
+        0.1,
+        0.2
+      ],
+      "HIGH": [
+        0.2,
+        0.35
+      ]
+    }
+  },
+  "reputation": {
+    "satisfaction_thresholds": {
+      "EMERGENCY_CASH": [
+        {
+          "max": 0.4,
+          "inclusive": false,
+          "result": "DISSATISFIED"
+        },
+        {
+          "max": 0.5,
+          "inclusive": true,
+          "result": "SATISFIED"
+        },
+        {
+          "max": null,
+          "inclusive": true,
+          "result": "VERY_SATISFIED"
+        }
+      ],
+      "UPGRADE_PURCHASE": [
+        {
+          "max": 0.5,
+          "inclusive": false,
+          "result": "HUMILIATED"
+        },
+        {
+          "max": 0.6,
+          "inclusive": true,
+          "result": "DISSATISFIED"
+        },
+        {
+          "max": 0.8,
+          "inclusive": true,
+          "result": "SATISFIED"
+        },
+        {
+          "max": null,
+          "inclusive": true,
+          "result": "VERY_SATISFIED"
+        }
+      ],
+      "GREEDY_SELLING": [
+        {
+          "max": 0.7,
+          "inclusive": false,
+          "result": "HUMILIATED"
+        },
+        {
+          "max": 0.8,
+          "inclusive": true,
+          "result": "DISSATISFIED"
+        },
+        {
+          "max": 1.0,
+          "inclusive": true,
+          "result": "SATISFIED"
+        },
+        {
+          "max": null,
+          "inclusive": true,
+          "result": "VERY_SATISFIED"
+        }
+      ]
+    },
+    "satisfaction_deltas": {
+      "VERY_SATISFIED": 6,
+      "SATISFIED": 2,
+      "DISSATISFIED": -4,
+      "HUMILIATED": -8
+    },
+    "kindness_deltas": {
+      "GENEROUS": 2,
+      "NORMAL": 0,
+      "ARGUMENTATIVE": 0,
+      "RUDE": -2
+    },
+    "no_purchase_deltas": {
+      "0": 0.5,
+      "-2": 0.5
+    },
+    "failed_scam_delta": -5,
+    "non_humiliating_kindness": [
+      "GENEROUS",
+      "NORMAL"
+    ],
+    "positive_decay": {
+      "temporary": true,
+      "ranges": [
+        {
+          "minimum": 0,
+          "maximum": 99,
+          "multiplier": 1.0
+        },
+        {
+          "minimum": 100,
+          "maximum": 249,
+          "multiplier": 0.75
+        },
+        {
+          "minimum": 250,
+          "maximum": 499,
+          "multiplier": 0.5
+        },
+        {
+          "minimum": 500,
+          "maximum": 799,
+          "multiplier": 0.35
+        },
+        {
+          "minimum": 800,
+          "maximum": null,
+          "multiplier": 0.2
+        }
+      ],
+      "precision_policy": "FLOAT_INTERNAL_ROUND_DISPLAY_2"
+    }
+  },
+  "price": {
+    "base_prices": {
+      "1": 1000,
+      "2": 2000,
+      "3": 5000,
+      "4": 15000,
+      "5": 35000
+    },
+    "normal_values": {
+      "EXCELLENT": 0.5,
+      "ADEQUATE": 0.2,
+      "MIXED": 0.05,
+      "NONE": -0.5
+    },
+    "normal_coefficients": {
+      "EXCELLENT": 1.1,
+      "ADEQUATE": 0.8,
+      "MIXED": 0.5,
+      "NONE": 0.3
+    },
+    "high_values": {
+      "EXCELLENT": 1.0,
+      "ADEQUATE": 0.4,
+      "LOW": 0.1,
+      "NONE": -0.8
+    },
+    "high_coefficients": {
+      "EXCELLENT": 1.3,
+      "ADEQUATE": 0.9,
+      "LOW": 0.55,
+      "NONE": 0.2
+    },
+    "special_values": {
+      "HIGH_RELEVANT": 0.3,
+      "RELEVANT": 0.1,
+      "NONE_RELEVANT": -0.1
+    },
+    "unique_values": {
+      "HIGH": 0.5,
+      "LOW": 0.3,
+      "NONE": 0.0
+    },
+    "reinforce_values": {
+      "PERFECT": 0.8,
+      "GOOD": 0.4,
+      "MIXED": -0.2,
+      "BAD": -0.5,
+      "UNENHANCED": 0.1
+    },
+    "refining_values": {
+      "0": 0.0,
+      "1": 0.05,
+      "2": 0.1,
+      "3": 0.15,
+      "4": 0.25,
+      "5": 0.5,
+      "6": 0.8,
+      "7": 1.1,
+      "8": 1.5,
+      "9": 2.0,
+      "10": 3.0
+    },
+    "amplification_values": {
+      "UNAPPLIED": 0.2,
+      "ZERO_LINE": -0.5,
+      "ONE_LINE_LOW": -0.4,
+      "ONE_LINE_HIGH": -0.2,
+      "TWO_LINE_LOW": 0.0,
+      "TWO_LINE_HIGH": 0.2,
+      "THREE_LINE_LOW": 0.4,
+      "THREE_LINE_HIGH": 1.0
+    },
+    "market_power_values": {
+      "STRONG": 0.15,
+      "NORMAL": 0.05,
+      "WEAK": -0.1
+    },
+    "market_popularity_values": {
+      "POPULAR": 0.2,
+      "NORMAL": 0.05,
+      "UNPOPULAR": -0.2
+    },
+    "stability_multipliers": {
+      "below_2": {
+        "100": 1.5,
+        "80": 1.3,
+        "60": 1.0,
+        "40": 0.8,
+        "20": 0.6,
+        "0": 0.4
+      },
+      "at_least_2": {
+        "100": 2.0,
+        "80": 1.6,
+        "60": 1.2,
+        "40": 1.0,
+        "20": 0.9,
+        "0": 0.6
+      }
+    },
+    "purpose_multipliers": {
+      "EMERGENCY_CASH": 0.5,
+      "UPGRADE_PURCHASE": 0.8,
+      "GREEDY_SELLING": 1.0
+    },
+    "knowledge_multipliers": {
+      "NONE": 1.0,
+      "SOME": 1.1,
+      "HIGH": 1.2
+    },
+    "scammer_minimum_multiplier": 1.5,
+    "minimum_price_ratio": 0.1
+  },
+  "progression": {
+    "temporary": true,
+    "reputation": {
+      "guest_kindness": {
+        "anchors": [
+          {
+            "value": 0,
+            "weights": {
+              "GENEROUS": 0.05,
+              "NORMAL": 0.45,
+              "ARGUMENTATIVE": 0.2,
+              "RUDE": 0.2,
+              "SCAMMER": 0.1
+            }
+          },
+          {
+            "value": 100,
+            "weights": {
+              "GENEROUS": 0.08,
+              "NORMAL": 0.5,
+              "ARGUMENTATIVE": 0.17,
+              "RUDE": 0.16,
+              "SCAMMER": 0.09
+            }
+          },
+          {
+            "value": 250,
+            "weights": {
+              "GENEROUS": 0.12,
+              "NORMAL": 0.54,
+              "ARGUMENTATIVE": 0.14,
+              "RUDE": 0.12,
+              "SCAMMER": 0.08
+            }
+          },
+          {
+            "value": 500,
+            "weights": {
+              "GENEROUS": 0.18,
+              "NORMAL": 0.55,
+              "ARGUMENTATIVE": 0.11,
+              "RUDE": 0.09,
+              "SCAMMER": 0.07
+            }
+          },
+          {
+            "value": 800,
+            "weights": {
+              "GENEROUS": 0.25,
+              "NORMAL": 0.55,
+              "ARGUMENTATIVE": 0.08,
+              "RUDE": 0.07,
+              "SCAMMER": 0.05
+            }
+          }
+        ]
+      },
+      "guest_level": {
+        "anchors": [
+          {
+            "value": 0,
+            "weights": {
+              "1-10": 0.35,
+              "11-30": 0.3,
+              "31-50": 0.18,
+              "51-70": 0.1,
+              "71-90": 0.05,
+              "91-120": 0.02
+            }
+          },
+          {
+            "value": 100,
+            "weights": {
+              "1-10": 0.28,
+              "11-30": 0.28,
+              "31-50": 0.21,
+              "51-70": 0.13,
+              "71-90": 0.07,
+              "91-120": 0.03
+            }
+          },
+          {
+            "value": 250,
+            "weights": {
+              "1-10": 0.2,
+              "11-30": 0.24,
+              "31-50": 0.23,
+              "51-70": 0.17,
+              "71-90": 0.1,
+              "91-120": 0.06
+            }
+          },
+          {
+            "value": 500,
+            "weights": {
+              "1-10": 0.13,
+              "11-30": 0.19,
+              "31-50": 0.23,
+              "51-70": 0.21,
+              "71-90": 0.15,
+              "91-120": 0.09
+            }
+          },
+          {
+            "value": 800,
+            "weights": {
+              "1-10": 0.08,
+              "11-30": 0.14,
+              "31-50": 0.2,
+              "51-70": 0.24,
+              "71-90": 0.2,
+              "91-120": 0.14
+            }
+          }
+        ]
+      },
+      "guest_power": {
+        "anchors": [
+          {
+            "value": 0,
+            "weights": {
+              "VERY_LOW": 0.3,
+              "LOW": 0.3,
+              "NORMAL": 0.25,
+              "HIGH": 0.1,
+              "VERY_HIGH": 0.05
+            }
+          },
+          {
+            "value": 100,
+            "weights": {
+              "VERY_LOW": 0.25,
+              "LOW": 0.28,
+              "NORMAL": 0.28,
+              "HIGH": 0.13,
+              "VERY_HIGH": 0.06
+            }
+          },
+          {
+            "value": 250,
+            "weights": {
+              "VERY_LOW": 0.18,
+              "LOW": 0.24,
+              "NORMAL": 0.3,
+              "HIGH": 0.19,
+              "VERY_HIGH": 0.09
+            }
+          },
+          {
+            "value": 500,
+            "weights": {
+              "VERY_LOW": 0.12,
+              "LOW": 0.19,
+              "NORMAL": 0.3,
+              "HIGH": 0.25,
+              "VERY_HIGH": 0.14
+            }
+          },
+          {
+            "value": 800,
+            "weights": {
+              "VERY_LOW": 0.07,
+              "LOW": 0.13,
+              "NORMAL": 0.27,
+              "HIGH": 0.31,
+              "VERY_HIGH": 0.22
+            }
+          }
+        ]
+      }
+    },
+    "trade_count": {
+      "guest_title": {
+        "anchors": [
+          {
+            "value": 0,
+            "weights": {
+              "NONE": 0.55,
+              "C": 0.25,
+              "B": 0.12,
+              "A": 0.06,
+              "S": 0.02
+            }
+          },
+          {
+            "value": 25,
+            "weights": {
+              "NONE": 0.45,
+              "C": 0.28,
+              "B": 0.16,
+              "A": 0.08,
+              "S": 0.03
+            }
+          },
+          {
+            "value": 50,
+            "weights": {
+              "NONE": 0.36,
+              "C": 0.29,
+              "B": 0.2,
+              "A": 0.11,
+              "S": 0.04
+            }
+          },
+          {
+            "value": 100,
+            "weights": {
+              "NONE": 0.25,
+              "C": 0.27,
+              "B": 0.25,
+              "A": 0.17,
+              "S": 0.06
+            }
+          },
+          {
+            "value": 200,
+            "weights": {
+              "NONE": 0.15,
+              "C": 0.22,
+              "B": 0.28,
+              "A": 0.24,
+              "S": 0.11
+            }
+          },
+          {
+            "value": 400,
+            "weights": {
+              "NONE": 0.08,
+              "C": 0.15,
+              "B": 0.27,
+              "A": 0.31,
+              "S": 0.19
+            }
+          }
+        ]
+      },
+      "guest_achievement": {
+        "anchors": [
+          {
+            "value": 0,
+            "weights": {
+              "NONE": 0.5,
+              "SOME": 0.3,
+              "GOOD": 0.15,
+              "VERY_GOOD": 0.05
+            }
+          },
+          {
+            "value": 25,
+            "weights": {
+              "NONE": 0.42,
+              "SOME": 0.32,
+              "GOOD": 0.19,
+              "VERY_GOOD": 0.07
+            }
+          },
+          {
+            "value": 50,
+            "weights": {
+              "NONE": 0.34,
+              "SOME": 0.33,
+              "GOOD": 0.24,
+              "VERY_GOOD": 0.09
+            }
+          },
+          {
+            "value": 100,
+            "weights": {
+              "NONE": 0.24,
+              "SOME": 0.31,
+              "GOOD": 0.31,
+              "VERY_GOOD": 0.14
+            }
+          },
+          {
+            "value": 200,
+            "weights": {
+              "NONE": 0.14,
+              "SOME": 0.26,
+              "GOOD": 0.38,
+              "VERY_GOOD": 0.22
+            }
+          },
+          {
+            "value": 400,
+            "weights": {
+              "NONE": 0.08,
+              "SOME": 0.18,
+              "GOOD": 0.41,
+              "VERY_GOOD": 0.33
+            }
+          }
+        ]
+      }
+    }
+  },
+  "analysis": {
+    "successful_trade_reference_per_week": 30,
+    "reputation_checkpoints": [
+      10,
+      25,
+      30,
+      50,
+      60,
+      100,
+      120,
+      200,
+      240
+    ],
+    "progression_distribution_checkpoints": [
+      30,
+      60,
+      120,
+      240
+    ]
+  },
+  "appraisal": {
+    "unassisted_correct_probability": 0.5,
+    "property_tools": {
+      "reinforcement": "reinforcement_tool",
+      "refining": "refining_tool",
+      "amplification": "amplification_tool",
+      "stability": "stability_tool",
+      "special_property": "special_property_tool",
+      "unique_property": "unique_property_tool"
+    }
+  },
+  "simulation_policies": {
+    "purchase": "BUY_IF_ASK_AT_MOST_TRUE_APPRAISAL",
+    "sale": "ACCEPT_IF_OFFER_MEETS_APPRAISAL_AND_COST_FLOOR",
+    "inventory_expansion": "EXPAND_IF_BLOCKED_AND_AFFORDABLE",
+    "cash_deficit": "ALLOW_NEGATIVE_CASH_CONTINUE_TRADING",
+    "scrap": "MANUAL_ONLY"
+  },
+  "economy": {
+    "starting_cash": 100000,
+    "starting_debt": 0,
+    "weeks": 12,
+    "trials": 500,
+    "days_per_week": 7,
+    "weeks_per_month": 4,
+    "initial_inventory_capacity": 10,
+    "maximum_inventory_capacity": 20,
+    "inventory_expansion_cost": 10000,
+    "scrap_purchase_price_ratio": 0.5,
+    "temporary_metadata": {
+      "simulation_policies": "TEMPORARY simulator decision heuristics; expansion and scrap are player-selected game actions",
+      "negative_cash": "SIMULATION ONLY; decide Godot insufficient-cash behavior after playtesting",
+      "debt_repayment": "HISTORICAL EXPERIMENT ONLY: disabled in current game rules"
+    },
+    "weekly_operating_cost": {"first_week": 2000, "weekly_increase": 2000},
+    "debt_repayment": {
+      "enabled": false,
+      "mandatory_weekly_payment": 5000,
+      "default_policy": "mandatory_only",
+      "policies": {
+        "mandatory_only": {"name": "MANDATORY_ONLY", "reserve_threshold": 0, "excess_repayment_fraction": 0},
+        "moderate": {"name": "MODERATE_EARLY_REPAYMENT", "reserve_threshold": 50000, "excess_repayment_fraction": 0.5},
+        "aggressive": {"name": "AGGRESSIVE_EARLY_REPAYMENT", "reserve_threshold": 30000, "excess_repayment_fraction": 1}
+      }
+    },
+    "daily_visitors": {
+      "minimum": 6,
+      "maximum": 8
+    },
+    "forced_initial_seller_visits": 4,
+    "visitor_roles": {
+      "SELL_TO_SHOP": 0.5,
+      "BUY_FROM_SHOP": 0.5
+    },
+    "checkpoints": [
+      1,
+      2,
+      4,
+      8,
+      12,
+      16,
+      20,
+      24
+    ],
+    "buyer_fit": {
+      "weights": {
+        "tier": 30,
+        "weapon_preference": 20,
+        "normal_stat": 13,
+        "high_stat": 11,
+        "reinforcement": 10,
+        "refining": 7,
+        "amplification": 5,
+        "unique_stat": 4
+      },
+      "non_preferred_weapon_fit": 0.7,
+      "quality_order": {
+        "normal_stat": [
+          "NONE",
+          "MIXED",
+          "ADEQUATE",
+          "EXCELLENT"
+        ],
+        "high_stat": [
+          "NONE",
+          "LOW",
+          "ADEQUATE",
+          "EXCELLENT"
+        ],
+        "reinforcement": [
+          "BAD",
+          "MIXED",
+          "UNENHANCED",
+          "GOOD",
+          "PERFECT"
+        ],
+        "unique_stat": [
+          "NONE",
+          "LOW",
+          "HIGH"
+        ],
+        "amplification": [
+          "ZERO_LINE",
+          "UNAPPLIED",
+          "ONE_LINE_LOW",
+          "ONE_LINE_HIGH",
+          "TWO_LINE_LOW",
+          "TWO_LINE_HIGH",
+          "THREE_LINE_LOW",
+          "THREE_LINE_HIGH"
+        ]
+      },
+      "refining_zero_probability": 0.05
+    },
+    "interest_bands": [
+      {
+        "name": "VERY_HIGH_INTEREST",
+        "minimum": 85,
+        "haggles": 0,
+        "price_multiplier": 1.2,
+        "desired_discount": 0
+      },
+      {
+        "name": "HIGH_INTEREST",
+        "minimum": 70,
+        "haggles": 1,
+        "price_multiplier": 1.1,
+        "desired_discount": 0.05
+      },
+      {
+        "name": "MEDIUM_INTEREST",
+        "minimum": 55,
+        "haggles": 2,
+        "price_multiplier": 1.05,
+        "desired_discount": 0.1
+      },
+      {
+        "name": "LOW_INTEREST",
+        "minimum": 40,
+        "haggles": 3,
+        "price_multiplier": 1.0,
+        "desired_discount": 0.15
+      }
+    ],
+    "knowledge_price_adjustment": {
+      "NONE": 0.05,
+      "SOME": 0,
+      "HIGH": -0.05
+    },
+    "listing_markup": 0.2,
+    "minimum_profit_over_cost": 0.05,
+    "sale_reputation_by_haggles": {
+      "0": 2,
+      "1": 1,
+      "2": 0,
+      "3": -1
+    },
+    "long_inventory_days": [
+      30,
+      60,
+      90
+    ]
+  }
+}

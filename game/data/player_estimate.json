@@ -1,0 +1,9 @@
+{
+  "normal_stat": {"table": "normal_values", "keys": ["NONE", "MIXED", "ADEQUATE", "EXCELLENT"]},
+  "high_stat": {"table": "high_values", "keys": ["NONE", "LOW", "ADEQUATE", "EXCELLENT"]},
+  "unique_property": {"table": "unique_values", "keys": ["NONE", "LOW", "HIGH"]},
+  "reinforcement": {"table": "reinforce_values", "keys": ["BAD", "MIXED", "GOOD", "PERFECT"]},
+  "refining": {"table": "refining_values", "keys": ["1", "4", "7", "10"]},
+  "amplification": {"table": "amplification_values", "keys": ["UNAPPLIED", "ZERO_LINE", "ONE_LINE_LOW", "ONE_LINE_HIGH", "TWO_LINE_LOW", "TWO_LINE_HIGH", "THREE_LINE_LOW", "THREE_LINE_HIGH"]},
+  "stability": {"representatives": [20, 60, 80, 100]}
+}

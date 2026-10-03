@@ -1,0 +1,6 @@
+{
+  "attempts_by_purpose": {"EMERGENCY_CASH": 1, "UPGRADE_PURCHASE": 2, "GREEDY_SELLING": 2},
+  "counter_discount": 0.05,
+  "hold_asking_knowledge": ["HIGH"],
+  "hold_asking_kindness": ["SCAMMER"]
+}

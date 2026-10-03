@@ -1,0 +1,7 @@
+.godot/
+tools/godot/
+tools/*.zip
+tests/generated_cases.json
+tests/verification.log
+tests/*.png
+tests/*.png.import
