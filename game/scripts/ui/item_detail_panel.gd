@@ -72,7 +72,7 @@ func rebuild() -> void:
 	UIFactory.at(dialogue_label, Rect2(54, 850, 442, 176))
 	UIFactory.panel(self, Rect2(554, 26, 802, 1024))
 	UIFactory.at(UIFactory.label(self, TextCatalog.weapon(item.known.item_type), 40), Rect2(580, 50, 750, 62))
-	UIFactory.at(UIFactory.label(self, "무기 종류: %s  /  요구 직업: %s\n아이템 등급: %d" % [TextCatalog.weapon(item.known.item_type), TextCatalog.CLASSES[item.known.item_class], item.known.tier], 25), Rect2(580, 126, 750, 82))
+	UIFactory.at(UIFactory.label(self, "무기 종류: %s  /  기준 직업: %s\n아이템 등급: %d" % [TextCatalog.weapon(item.known.item_type), TextCatalog.CLASSES[item.known.required_class], item.known.tier], 25), Rect2(580, 126, 750, 82))
 	var public_stats = []
 	for line in item.known.stat_lines + item.known.amplification_lines:
 		public_stats.append(TextCatalog.stat(line))
@@ -80,10 +80,10 @@ func rebuild() -> void:
 	UIFactory.at(public_stats_label, Rect2(580, 219, 750, 116))
 	for i in range(PlayerJudgement.SECTIONS.size()):
 		var section = PlayerJudgement.SECTIONS[i]
-		var y = 349 + i * 95
+		var y = 349 + i * 76
 		var row = UIFactory.button(self, "", func(): select_section(section))
-		row.add_theme_font_size_override("font_size", 23)
-		UIFactory.at(row, Rect2(578, y, 550, 82))
+		row.add_theme_font_size_override("font_size", 21)
+		UIFactory.at(row, Rect2(578, y, 550, 70))
 		row_buttons[section] = row
 		var toggle = CheckBox.new()
 		toggle.text = "가격 반영"
@@ -122,6 +122,8 @@ func rebuild() -> void:
 	refresh_controls()
 
 func result_text(section: String) -> String:
+	if section in PlayerJudgement.MARKET_SECTIONS:
+		return "기준 직업의 시장 상황을 추정하세요"
 	if section in ["normal_stat", "high_stat"]:
 		var values = []
 		for line in item.known.stat_lines:
@@ -132,6 +134,8 @@ func result_text(section: String) -> String:
 	return TextCatalog.property_result(section, item.known.player_view().properties[section].displayed_value)
 
 func hint_color(section: String) -> Color:
+	if section in PlayerJudgement.MARKET_SECTIONS:
+		return UIFactory.MUTED
 	if not PlayerJudgement.revealed(item.known.player_view(), section):
 		return UIFactory.MUTED
 	# A subtle visual observation, never a selected/recommended judgement.
@@ -151,12 +155,12 @@ func refresh_controls() -> void:
 	for section in PlayerJudgement.SECTIONS:
 		var revealed = PlayerJudgement.revealed(view, section)
 		var entry = item.judgement.entries[section]
-		var action_text = "감정하기" if not revealed else "판단 선택" if entry.grade < 0 else "내 판단: " + TextCatalog.judgement_options(section)[entry.grade]
+		var action_text = "감정하기" if not revealed else "판단 선택" if entry.selected_value_tier < 0 else "내 판단: " + TextCatalog.judgement_options(section)[entry.selected_value_tier]
 		row_buttons[section].text = "%s  ·  %s\n%s" % [TextCatalog.SECTIONS[section], action_text, result_text(section)]
 		row_buttons[section].add_theme_color_override("font_color", hint_color(section))
-		toggles[section].disabled = not revealed or entry.grade < 0
+		toggles[section].disabled = not revealed or entry.selected_value_tier < 0
 		toggles[section].set_pressed_no_signal(entry.included)
-		var grade_name = TextCatalog.judgement_options(section)[entry.grade] if entry.grade >= 0 else "미선택"
+		var grade_name = TextCatalog.judgement_options(section)[entry.selected_value_tier] if entry.selected_value_tier >= 0 else "미선택"
 		toggles[section].tooltip_text = "내 판단: %s\n가격 계산에 반영" % grade_name
 	judgement_title.text = TextCatalog.SECTIONS[active_section] + " · 가치 판단"
 	judgement_result.text = result_text(active_section)
@@ -164,13 +168,13 @@ func refresh_controls() -> void:
 	var active = item.judgement.entries[active_section]
 	for i in range(grade_buttons.size()):
 		grade_buttons[i].disabled = busy or not PlayerJudgement.revealed(view, active_section)
-		grade_buttons[i].set_pressed_no_signal(active.grade == i)
-	judgement_status.text = "감정한 뒤 판단을 선택하세요." if not PlayerJudgement.revealed(view, active_section) else "판단을 선택한 뒤 해당 항목의\n가격 반영에 체크하세요." if active.grade < 0 else "내 판단: %s · %s" % [TextCatalog.judgement_options(active_section)[active.grade], "계산에 반영 중" if active.included else "아직 계산에 미반영"]
+		grade_buttons[i].set_pressed_no_signal(active.selected_value_tier == i)
+	judgement_status.text = "감정한 뒤 판단을 선택하세요." if not PlayerJudgement.revealed(view, active_section) else "판단을 선택한 뒤 해당 항목의\n가격 반영에 체크하세요." if active.selected_value_tier < 0 else "내 판단: %s · %s" % [TextCatalog.judgement_options(active_section)[active.selected_value_tier], "계산에 반영 중" if active.included else "아직 계산에 미반영"]
 	if is_seller:
 		var asking = negotiation.current_asking if negotiation != null else PriceCalculator.calculate(config, item, market).asking_price
 		asking_label.text = "손님의 요구 가격\n" + UIFactory.money(asking)
 		if negotiation != null:
-			negotiation_label.text = "마지막 제안: %s\n남은 흥정 횟수: %d회" % ["없음" if negotiation.last_offer < 0 else UIFactory.money(negotiation.last_offer), negotiation.remaining_attempts]
+			negotiation_label.text = "마지막 제안: %s\n남은 흥정 횟수: %d회" % ["없음" if negotiation.last_offer < 0 else UIFactory.money(negotiation.last_offer), negotiation.remaining_offer_attempts]
 	else:
 		asking_label.text = "현재 감정가\n" + UIFactory.money(PriceCalculator.calculate(config, item, market).true_appraised_price)
 	estimate_label.text = "내가 계산한 예상 가격\n" + UIFactory.money(PriceCalculator.estimate(config, view, item.judgement))

@@ -1,6 +1,7 @@
 # RPG Weapon Pawnshop — Python reference implementation
 
-현재 결정된 게임 규칙을 검증하는 Python simulator입니다. Godot/UI는 포함하지 않습니다.
+Python reference와 `game/`의 Godot 4.6.1 Day 1 프로젝트입니다.
+최신 규칙과 변수명은 [규칙 변경 기록](game/docs/RULE_CHANGES.md)을 참고하세요.
 기존 seller/buyer 생성, buyer fit, 가격, 주간 시장, reputation/progression 계산을 유지합니다.
 Python 3.10 이상, 표준 라이브러리만 사용합니다.
 
@@ -13,7 +14,7 @@ python -m simulator.main --economy-only --economy-trials 100 --economy-weeks 12 
 
 이번 100-trial 실행은 regression/sanity 확인이며 밸런스 결론을 내리지 않습니다.
 실행 결과 요약: [SANITY_SUMMARY.md](output/reference_sanity/SANITY_SUMMARY.md).
-현재 검증 결과는 기존 67개 + 추가 23개 = 전체 90개 테스트 통과입니다.
+링크된 과거 sanity 결과는 당시 규칙의 기록입니다. 현재 검증 결과는 game/tests/VERIFICATION.md를 참고하세요.
 일반 CLI 기본 경제 분석은 config에 설정된 12주/500회입니다.
 `--starting-cash`, `--economy-weeks`, `--economy-trials`, `--config`로 실험을 재현할 수 있습니다.
 현재 debt가 비활성화되어 있으므로 양수 `--starting-debt`는 오류입니다.
@@ -38,14 +39,18 @@ python -m simulator.main --count 10000 --seed 12345 --economy-trials 0
 | 확장 | 플레이어가 선택; 매번 10,000 G로 정확히 1칸 추가 |
 | 구매자 예산 | 없음; 기존 fit/interest/listing/price ceiling/haggle 사용 |
 | 기본 공개 | tier와 생성된 모든 concrete RPG stat 수치는 항상 정확 |
-| 감정 대상 | reinforcement, refining, amplification, stability, special/unique property |
+| 감정 대상 | reinforcement, refining, amplification, stability, unique property |
 | 도구 없는 감정 | 각 속성 50% 정확한 추측, 50% 유효한 다른 값 |
 | 도구 사용 | 해당 도구 보유 후 명시적으로 사용한 속성만 정확히 공개 |
 | 고물상 | 플레이어 선택; 실제 매입가의 50%에 즉시 처분 |
 
 확장 비용은 `economy.inventory_expansion_cost` 단일 값입니다. 이전 단계별 TEMPORARY
 비용표는 제거했습니다. 현금이 확장비보다 적거나 이미 20칸이면 확장하지 않습니다.
-기본 시작 손님 4명 SELL_TO_SHOP, 이후 seller/buyer 50:50 등 기존 규칙은 유지합니다.
+Python 일반 방문은 최초 4명 seller, 이후 seller/buyer 55:45입니다.
+Godot Day 1은 1~4 seller, 5~7 buyer, 8번째만 50:50입니다.
+구매 호환은 buyer의 무기 pool에 item_type이 있는지로 판정합니다.
+required_class는 시장·스탯 생성 기준 직업이며 독점적인 구매 직업 제한이 아닙니다.
+시장 두 축은 각각 -20%/0/+20%이며 안정도에는 영향을 주지 않습니다. 특수 속성은 폐기했습니다.
 
 ## SIMULATION-ONLY POLICY
 
@@ -75,7 +80,7 @@ python -m simulator.main --count 10000 --seed 12345 --economy-trials 0
   stat의 internal grade/category/relevance와 true price는 포함하지 않습니다.
 - 모든 기존 concrete stat line은 공개합니다. unique/amplification에서 생성된 수치도
   공개하지만 그 속성의 상태/등급은 별도의 감정 필드입니다.
-- special/unique property는 현재 존재하는 property enum을 사용합니다. 새로운 효과 목록이나
+- unique property는 현재 존재하는 property enum을 사용합니다. 새로운 효과 목록이나
   수치 범위를 발명하지 않습니다. normal/high stat의 EXCELLENT/ADEQUATE 등 내부 등급은 숨깁니다.
 - `appraisal.create_player_knowledge`: 각 속성마다 0.5 확률로 true value, 아니면 config의
   유효 domain에서 true value를 제외한 값을 균등 선택합니다. 정답 추측도 GUESS로 저장합니다.
@@ -114,7 +119,7 @@ python -m simulator.main --count 10000 --seed 12345 --economy-trials 0
 - `simulator/weapon_generator.py`, `guest_generator.py`, `price_calculator.py`, `buyer_fit.py`:
   기존 생성/가치/수요 로직. `reputation_simulation.py` 등 기존 progression 로직도 유지합니다.
 - `simulator/config.py`: config 검증; `tests/`: 이식 시 회귀 검증 기준.
-- `rpg_weapon_pawnshop_core_system_spec_v0_2.txt`: 현재 결정 사항을 반영한 시스템 명세.
+- `rpg_weapon_pawnshop_core_system_spec_v0_2.txt`: 이전 시스템 명세. 최신 변경은 game/docs/RULE_CHANGES.md와 현재 config/source를 우선합니다.
 
 ## 과거 실험과 TODO
 
@@ -125,7 +130,7 @@ mandatory/optional 모두 비활성화됩니다. 역사적 실험은 별도 conf
 현재 게임에 상환/이자 시스템을 추가하지 않습니다.
 
 TODO: 실제 게임의 운영비 부족/게임오버 처리, 감정 도구 획득/비용/사용 UX, 아직 미정인
-special/unique 효과 세부 데이터, 실제 플레이어 매입/판매 선택 연결. buyer budget은
+unique 효과 세부 데이터, 실제 플레이어 매입/판매 선택 연결. buyer budget은
 플레이 테스트에서 필요성이 확인될 때만 검토합니다. 이벤트는 미구현이며 향후 기존 변수의
 일시 modifier로 확장 가능합니다. 기존 미확정 생성/수치/진행 밸런스는 config의
 `metadata.temporary_values` 표시를 유지합니다. 이번 작업에서 추가 밸런스 튜닝은 하지 않습니다.

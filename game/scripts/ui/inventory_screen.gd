@@ -80,7 +80,7 @@ func rebuild() -> void:
 	inspect_button.disabled = not valid
 	scrap_button.disabled = not valid
 	if valid:
-		UIFactory.at(UIFactory.label(body, "%s · %d등급\n요구 직업: %s" % [TextCatalog.weapon(selected.known.item_type), selected.known.tier, TextCatalog.CLASSES[selected.known.item_class]], 26), Rect2(70, 577, 320, 112))
+		UIFactory.at(UIFactory.label(body, "%s · %d등급\n요구 직업: %s" % [TextCatalog.weapon(selected.known.item_type), selected.known.tier, TextCatalog.CLASSES[selected.known.required_class]], 26), Rect2(70, 577, 320, 112))
 		UIFactory.at(UIFactory.label(body, "매입 가격: %s\n현재 감정가: %s\n획득일: %d일차" % [UIFactory.money(selected.final_purchase_price), UIFactory.money(PriceCalculator.calculate(controller.config, selected, controller.market).true_appraised_price), selected.purchase_day], 23), Rect2(420, 571, 410, 130))
 		var stats = []
 		for line in selected.known.stat_lines + selected.known.amplification_lines:

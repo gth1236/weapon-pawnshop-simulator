@@ -123,7 +123,7 @@ class EconomyConstraintTests(unittest.TestCase):
 
     def test_buyer_sale_recovers_negative_cash(self):
         state = self.full_state(-50, 1)
-        buyer = replace(self.guest, role="BUY_FROM_SHOP", knowledge="NONE")
+        buyer = replace(self.guest, role="BUY_FROM_SHOP", market_knowledge="NONE")
         fit = SimpleNamespace(score=90, tier_fit=1, preference_match=True)
         with patch("simulator.economy_simulation.choose_inventory_item", return_value=(state.inventory[0], fit, None)), \
              patch("simulator.economy_simulation.revalue_item", return_value=100):
@@ -177,10 +177,10 @@ class EconomyConstraintTests(unittest.TestCase):
         b = run_economy_trial(self.config, 1, 12, operating_cost_multiplier=0,
                               replay_flow=a["visitor_flow"])
         for left, right in zip(a["transactions"], b["transactions"]):
-            for key in ("day", "customer_role", "guest_class", "preferred_weapon_type"):
+            for key in ("day", "customer_role", "adventurer_class", "preferred_weapon_type"):
                 self.assertEqual(left[key], right[key])
             if left["customer_role"] == "SELL_TO_SHOP":
-                for key in ("item_type", "item_class", "item_tier", "purchase_appraised_price"):
+                for key in ("item_type", "required_class", "item_tier", "purchase_appraised_price"):
                     self.assertEqual(left[key], right[key])
 
     def test_cli_overrides_and_complete_export(self):

@@ -26,31 +26,31 @@ class SimulatorTests(unittest.TestCase):
 
     def test_probability_validation_rejects_bad_sum(self):
         config = copy.deepcopy(self.config)
-        config["weapon"]["compatibility_weights"]["compatible"] = 0.7
+        config["weapon"]["compatibility_weights"]["seller_class_compatible"] = 0.7
         with self.assertRaises(ConfigError):
             validate_config(config)
 
     def test_required_uniform_rolls_and_compatibility_are_sane(self):
         records = run_simulation(self.config, 30_000, 77)
         for getter, expected in [
-            (lambda x: x.guest.guest_class, 1 / 6), (lambda x: x.guest.tendency, 1 / 4),
-            (lambda x: x.guest.knowledge, 1 / 3), (lambda x: x.guest.purpose, 1 / 3),
+            (lambda x: x.guest.adventurer_class, 1 / 6), (lambda x: x.guest.equipment_tendency, 1 / 4),
+            (lambda x: x.guest.market_knowledge, 1 / 3), (lambda x: x.guest.selling_purpose, 1 / 3),
         ]:
             counts = {}
             for record in records:
                 counts[getter(record)] = counts.get(getter(record), 0) + 1
             self.assertTrue(all(abs(count / len(records) - expected) < 0.02 for count in counts.values()))
-        compatible = sum(record.weapon.compatible for record in records) / len(records)
-        self.assertAlmostEqual(compatible, 0.8, delta=0.02)
+        seller_class_compatible = sum(record.weapon.seller_class_compatible for record in records) / len(records)
+        self.assertAlmostEqual(seller_class_compatible, 0.8, delta=0.02)
 
     def test_price_formula_and_floor(self):
         guest = Guest("NORMAL", "WARRIOR", 1, "NORMAL", "VERY_CARELESS", "NONE", "NONE", "NONE", "GREEDY_SELLING")
         weapon = WeaponTrueState(
-            item_type="axe", item_class="WARRIOR", compatible=True, generation_mode="OWN_CLASS", tier=1,
-            normal_stat_grade="NONE", high_stat_grade="NONE", special_stat_grade="NONE_RELEVANT",
+            item_type="axe", required_class="WARRIOR", seller_class_compatible=True, generation_mode="OWN_CLASS", tier=1,
+            normal_stat_grade="NONE", high_stat_grade="NONE",
             unique_stat_grade="NONE", reinforcement_grade="BAD", refining_level=1,
-            amplification_grade="ZERO_LINE", processing_load=1, popularity_load=0,
-            class_power_load=0, effective_processing_load=1, stability=0,
+            amplification_grade="ZERO_LINE", processing_load=1,
+            effective_processing_load=1, stability=0,
             stability_bracket="STABILITY_BELOW_20", stat_lines=(), amplification_lines=(),
         )
         result = calculate_price(self.config, guest, weapon, "WEAK", "UNPOPULAR")
@@ -85,8 +85,8 @@ class SimulatorTests(unittest.TestCase):
 
     def test_progression_quality_is_monotonic_and_keeps_low_categories(self):
         score_tables = {
-            "guest_level": {"1-10": 0, "11-30": 1, "31-50": 2, "51-70": 3, "71-90": 4, "91-120": 5},
-            "guest_power": {"VERY_LOW": 0, "LOW": 1, "NORMAL": 2, "HIGH": 3, "VERY_HIGH": 4},
+            "adventurer_level": {"1-10": 0, "11-30": 1, "31-50": 2, "51-70": 3, "71-90": 4, "91-120": 5},
+            "adventurer_power": {"VERY_LOW": 0, "LOW": 1, "NORMAL": 2, "HIGH": 3, "VERY_HIGH": 4},
         }
         for name, scores in score_tables.items():
             table = self.config["progression"]["reputation"][name]
@@ -96,14 +96,14 @@ class SimulatorTests(unittest.TestCase):
                 qualities.append(sum(weights[key] * scores[key] for key in scores))
                 self.assertTrue(all(weight > 0 for weight in weights.values()))
             self.assertEqual(qualities, sorted(qualities))
-        kindness = self.config["progression"]["reputation"]["guest_kindness"]
+        kindness = self.config["progression"]["reputation"]["trade_attitude"]
         low, high = interpolated_weights(kindness, 0), interpolated_weights(kindness, 800)
         self.assertGreater(high["GENEROUS"], low["GENEROUS"])
         self.assertLessEqual(high["RUDE"] + high["SCAMMER"], low["RUDE"] + low["SCAMMER"])
 
     def test_trade_progression_quality_is_monotonic(self):
-        scores = {"guest_title": {"NONE": 0, "C": 1, "B": 2, "A": 3, "S": 4},
-                  "guest_achievement": {"NONE": 0, "SOME": 1, "GOOD": 2, "VERY_GOOD": 3}}
+        scores = {"title_rank": {"NONE": 0, "C": 1, "B": 2, "A": 3, "S": 4},
+                  "achievement_rank": {"NONE": 0, "SOME": 1, "GOOD": 2, "VERY_GOOD": 3}}
         for name, mapping in scores.items():
             table = self.config["progression"]["trade_count"][name]
             values = [sum(interpolated_weights(table, count)[key] * score for key, score in mapping.items()) for count in (0, 25, 50, 100, 200, 400)]
@@ -115,17 +115,19 @@ class SimulatorTests(unittest.TestCase):
         self.assertAlmostEqual(counts["OWN_CLASS"] / len(records), .8, delta=.02)
         self.assertAlmostEqual(counts["FOREIGN_RAW"] / (counts["FOREIGN_RAW"] + counts["FOREIGN_WORKED"]), .9, delta=.02)
         raw = [r for r in records if r.weapon.generation_mode == "FOREIGN_RAW"]
-        self.assertTrue(all((not r.weapon.compatible and r.weapon.item_class != r.guest.guest_class and r.weapon.refining_level == 0 and r.weapon.reinforcement_grade == "UNENHANCED" and r.weapon.amplification_grade == "UNAPPLIED") for r in raw))
+        self.assertTrue(all((not r.weapon.seller_class_compatible and r.weapon.required_class != r.guest.adventurer_class and r.weapon.refining_level == 0 and r.weapon.reinforcement_grade == "UNENHANCED" and r.weapon.amplification_grade == "UNAPPLIED") for r in raw))
         self.assertEqual(self.config["price"]["reinforce_values"]["UNENHANCED"], .1)
 
-    def test_market_pressure_is_in_effective_load(self):
-        for record in run_simulation(self.config, 1000, 88):
-            weapon = record.weapon
-            expected_popularity = self.config["weapon"]["market_processing_load"]["class_popularity"][record.class_popularity]
-            expected_power = self.config["weapon"]["market_processing_load"]["class_power"][record.class_power]
-            self.assertEqual(weapon.popularity_load, expected_popularity)
-            self.assertEqual(weapon.class_power_load, expected_power)
-            self.assertEqual(weapon.effective_processing_load, weapon.processing_load + expected_popularity + expected_power)
+    def test_market_does_not_change_generated_weapon(self):
+        from simulator.weapon_generator import generate_weapon
+        guest = generate_guest(random.Random(8), self.config)
+        weak = {name: ("WEAK", "UNPOPULAR") for name in self.config["guest"]["classes"]}
+        strong = {name: ("STRONG", "POPULAR") for name in weak}
+        for seed in range(100):
+            a, _ = generate_weapon(random.Random(seed), self.config, guest, weak)
+            b, _ = generate_weapon(random.Random(seed), self.config, guest, strong)
+            self.assertEqual(a, b)
+            self.assertEqual(a.effective_processing_load, a.processing_load)
 
     def test_higher_effective_load_has_lower_configured_stability(self):
         tables = self.config["weapon"]["stability_by_processing_load"]
@@ -138,16 +140,16 @@ class SimulatorTests(unittest.TestCase):
         guests = [generate_guest(rng, self.config, visitor_number=index) for index in range(1, 10005)]
         self.assertTrue(all(guest.role == "SELL_TO_SHOP" for guest in guests[:4]))
         seller_rate = sum(guest.role == "SELL_TO_SHOP" for guest in guests[4:]) / 10000
-        self.assertAlmostEqual(seller_rate, .5, delta=.02)
+        self.assertAlmostEqual(seller_rate, .55, delta=.02)
 
     def _buyer_and_weapons(self):
         records = run_simulation(self.config, 1000, 55)
         first = records[0]
-        buyer = replace(first.guest, role="BUY_FROM_SHOP", guest_class=first.weapon.item_class,
+        buyer = replace(first.guest, role="BUY_FROM_SHOP", adventurer_class=first.weapon.required_class,
                         preferred_weapon_type=first.weapon.item_type)
-        compatible = [record.weapon for record in records if record.weapon.item_class == buyer.guest_class]
-        incompatible = next(record.weapon for record in records if record.weapon.item_class != buyer.guest_class)
-        return buyer, compatible, incompatible
+        seller_class_compatible = [record.weapon for record in records if record.weapon.item_type in self.config["weapon"]["class_weapon_pools"][buyer.adventurer_class]]
+        incompatible = next(record.weapon for record in records if record.weapon.item_type not in self.config["weapon"]["class_weapon_pools"][buyer.adventurer_class])
+        return buyer, seller_class_compatible, incompatible
 
     def test_buyer_fit_filters_class_and_rewards_preference(self):
         buyer, weapons, incompatible = self._buyer_and_weapons()

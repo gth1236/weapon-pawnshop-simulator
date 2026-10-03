@@ -33,10 +33,10 @@ static func apply_delta(config: Dictionary, reputation: float, raw: float) -> fl
 
 static func purchase_delta(config: Dictionary, guest: Dictionary, ratio: float) -> float:
 	var cfg = config.reputation
-	for band in cfg.satisfaction_thresholds[guest.purpose]:
+	for band in cfg.satisfaction_thresholds[guest.selling_purpose]:
 		if band.max == null or ratio < band.max or (band.inclusive and ratio == band.max):
 			var satisfaction = band.result
-			if satisfaction == "HUMILIATED" and guest.kindness in cfg.non_humiliating_kindness:
+			if satisfaction == "HUMILIATED" and guest.trade_attitude in cfg.non_humiliating_trade_attitude:
 				satisfaction = "DISSATISFIED"
-			return cfg.satisfaction_deltas[satisfaction] + cfg.kindness_deltas.get(guest.kindness, 0)
+			return cfg.satisfaction_deltas[satisfaction] + cfg.trade_attitude_deltas.get(guest.trade_attitude, 0)
 	return 0

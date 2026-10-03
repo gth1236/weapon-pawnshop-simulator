@@ -21,12 +21,12 @@ def _percentile(values, fraction):
     return ordered[lower] + (ordered[upper] - ordered[lower]) * (index - lower)
 
 
-def satisfaction_for_ratio(config, purpose, offer_ratio):
-    for band in config["reputation"]["satisfaction_thresholds"][purpose]:
+def satisfaction_for_ratio(config, selling_purpose, offer_ratio):
+    for band in config["reputation"]["satisfaction_thresholds"][selling_purpose]:
         maximum = band["max"]
         if maximum is None or offer_ratio < maximum or (band["inclusive"] and offer_ratio == maximum):
             return band["result"]
-    raise ValueError(f"no satisfaction band for {purpose} at {offer_ratio}")
+    raise ValueError(f"no satisfaction band for {selling_purpose} at {offer_ratio}")
 
 
 def positive_reputation_multiplier(config, current_reputation):
@@ -41,10 +41,10 @@ def apply_reputation_delta(config, current_reputation, raw_delta):
 
 def completed_trade_reputation_delta(config, guest, offer_ratio):
     cfg = config["reputation"]
-    satisfaction = satisfaction_for_ratio(config, guest.purpose, offer_ratio)
-    if satisfaction == "HUMILIATED" and guest.kindness in cfg["non_humiliating_kindness"]:
+    satisfaction = satisfaction_for_ratio(config, guest.selling_purpose, offer_ratio)
+    if satisfaction == "HUMILIATED" and guest.trade_attitude in cfg["non_humiliating_trade_attitude"]:
         satisfaction = "DISSATISFIED"
-    return cfg["satisfaction_deltas"][satisfaction] + cfg["kindness_deltas"].get(guest.kindness, 0)
+    return cfg["satisfaction_deltas"][satisfaction] + cfg["trade_attitude_deltas"].get(guest.trade_attitude, 0)
 
 
 def simulate_fair_value_strategy(config, trials, seed, checkpoints=None):
@@ -53,7 +53,7 @@ def simulate_fair_value_strategy(config, trials, seed, checkpoints=None):
         raise ValueError("trials and checkpoints must be positive")
     rng = random.Random(seed)
     results = {checkpoint: [] for checkpoint in checkpoints}
-    power_states = list(config["price"]["market_power_values"])
+    power_states = list(config["price"]["market_balance_values"])
     popularity_states = list(config["price"]["market_popularity_values"])
     for _ in range(trials):
         reputation, completed = 0.0, 0
@@ -61,7 +61,7 @@ def simulate_fair_value_strategy(config, trials, seed, checkpoints=None):
         while completed < max(checkpoints):
             guest = generate_guest(rng, config, reputation, completed)
             weapon, _ = generate_weapon(rng, config, guest, market)
-            price = calculate_price(config, guest, weapon, *market[weapon.item_class])
+            price = calculate_price(config, guest, weapon, *market[weapon.required_class])
             if price.appraised_price >= price.asking_price:
                 completed += 1
                 raw_delta = completed_trade_reputation_delta(config, guest, 1.0)
@@ -69,7 +69,7 @@ def simulate_fair_value_strategy(config, trials, seed, checkpoints=None):
                 if completed in results:
                     results[completed].append(reputation)
             else:
-                raw_delta = config["reputation"]["failed_scam_delta"] if guest.kindness == "SCAMMER" else float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
+                raw_delta = config["reputation"]["failed_scam_delta"] if guest.trade_attitude == "SCAMMER" else float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
                 reputation += apply_reputation_delta(config, reputation, raw_delta)
     reference = config["analysis"]["successful_trade_reference_per_week"]
     summaries = {}

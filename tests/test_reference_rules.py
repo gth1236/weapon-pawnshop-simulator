@@ -135,7 +135,7 @@ class ReferenceRuleTests(unittest.TestCase):
             known = self.knowledge(probability)
             known.refining.displayed_value = 0
             price = calculate_price(self.config, record.guest, self.weapon,
-                record.class_power, record.class_popularity)
+                record.class_balance, record.class_popularity)
             self.assertEqual(price.true_appraised_price, record.price.appraised_price)
 
     def test_appraisal_rng_does_not_advance_generation_rng(self):

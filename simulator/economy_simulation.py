@@ -229,19 +229,19 @@ def ensure_inventory_space(config, state, purchase_price, day):
 
 
 def roll_market(rng, config):
-    powers = list(config["price"]["market_power_values"]); popularities = list(config["price"]["market_popularity_values"])
+    powers = list(config["price"]["market_balance_values"]); popularities = list(config["price"]["market_popularity_values"])
     return {name: (rng.choice(powers), rng.choice(popularities)) for name in config["guest"]["classes"]}
 
 
 def revalue_item(config, item, market):
-    power, popularity = market[item.weapon.item_class]
-    return calculate_price(config, item.seller_guest, item.weapon, power, popularity).appraised_price
+    class_balance, class_popularity = market[item.weapon.required_class]
+    return calculate_price(config, item.seller_guest, item.weapon, class_balance, class_popularity).appraised_price
 
 
 def _transaction_base(day, guest, state):
-    return {"day": day, "week": (day - 1) // 7 + 1, "customer_role": guest.role, "guest_class": guest.guest_class,
+    return {"day": day, "week": (day - 1) // 7 + 1, "customer_role": guest.role, "adventurer_class": guest.adventurer_class,
             "preferred_weapon_type": guest.preferred_weapon_type, "transaction_type": "NONE", "item_id": None,
-            "item_class": None, "item_type": None, "item_tier": None, "buyer_fit_score": None,
+            "required_class": None, "item_type": None, "item_tier": None, "buyer_fit_score": None,
             "tier_fit": None, "preference_match": None, "fit_band": None, "purchase_price": None,
             "purchase_appraised_price": None, "current_appraised_price": None, "listing_price": None,
             "buyer_offer_price": None, "final_sale_price": None, "gross_profit": None, "margin_rate": None,
@@ -263,14 +263,14 @@ def _finish(row, state, delta=0.0):
 def process_seller(config, rng, state, guest, market, day, item_id):
     row = _transaction_base(day, guest, state)
     weapon, known = generate_weapon(rng, config, guest, market)
-    power, popularity = market[weapon.item_class]
-    price = calculate_price(config, guest, weapon, power, popularity)
-    row.update(item_id=item_id, item_class=weapon.item_class, item_type=weapon.item_type, item_tier=weapon.tier,
+    class_balance, class_popularity = market[weapon.required_class]
+    price = calculate_price(config, guest, weapon, class_balance, class_popularity)
+    row.update(item_id=item_id, required_class=weapon.required_class, item_type=weapon.item_type, item_tier=weapon.tier,
                purchase_appraised_price=price.appraised_price, current_appraised_price=price.appraised_price)
     if price.asking_price > price.appraised_price:
-        outcome = "REJECTED_SCAMMER" if guest.kindness == "SCAMMER" else "REJECTED_OVERPRICED"
+        outcome = "REJECTED_SCAMMER" if guest.trade_attitude == "SCAMMER" else "REJECTED_OVERPRICED"
         state.counters[outcome] += 1
-        raw = config["reputation"]["failed_scam_delta"] if guest.kindness == "SCAMMER" else float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
+        raw = config["reputation"]["failed_scam_delta"] if guest.trade_attitude == "SCAMMER" else float(weighted_choice(rng, config["reputation"]["no_purchase_deltas"]))
         delta = apply_reputation_delta(config, state.reputation, raw); state.reputation += delta
         row["outcome"] = outcome; return _finish(row, state, delta), item_id
     if not ensure_inventory_space(config, state, price.asking_price, day):
@@ -305,10 +305,10 @@ def process_buyer(config, rng, state, guest, market, day):
     current = revalue_item(config, item, market); item.current_appraised_price = current
     listing = round(current * (1 + config["economy"]["listing_markup"])); item.shop_listing_price = listing
     band = interest_band(config, fit.score)
-    ceiling = current * (band["price_multiplier"] + config["economy"]["knowledge_price_adjustment"][guest.knowledge])
+    ceiling = current * (band["price_multiplier"] + config["economy"]["market_knowledge_price_adjustment"][guest.market_knowledge])
     offer = round(min(listing * (1 - band["desired_discount"]), ceiling))
     minimum = max(current, item.final_purchase_price * (1 + config["economy"]["minimum_profit_over_cost"]))
-    row.update(item_id=item.item_id, item_class=item.weapon.item_class, item_type=item.weapon.item_type, item_tier=item.weapon.tier,
+    row.update(item_id=item.item_id, required_class=item.weapon.required_class, item_type=item.weapon.item_type, item_tier=item.weapon.tier,
                buyer_fit_score=fit.score, tier_fit=fit.tier_fit, preference_match=fit.preference_match, fit_band=band["name"],
                purchase_price=item.final_purchase_price, purchase_appraised_price=item.purchase_appraised_price,
                current_appraised_price=current, listing_price=listing, buyer_offer_price=offer, haggle_count=band["haggles"],
@@ -488,7 +488,7 @@ def economy_analytics(result):
     for low,high in ((0,.25),(.25,.5),(.5,.75),(.75,1.01)):
         rows=[r for r in fits if low <= r["tier_fit"] < high]; sold=[r for r in rows if r["transaction_type"]=="SELL_TO_CUSTOMER"]
         analytics["tier_fit"][f"{low:.2f}-{min(high,1):.2f}"]={"candidates":len(rows),"success_rate":len(sold)/len(rows) if rows else 0,"average_fit":statistics.fmean(r["buyer_fit_score"] for r in rows) if rows else 0,"average_sale_price":statistics.fmean(r["final_sale_price"] for r in sold) if sold else 0}
-    stale=Counter((item.weapon.item_class,item.weapon.item_type,item.weapon.tier) for item in inventory if end_day-item.purchase_day>=30)
+    stale=Counter((item.weapon.required_class,item.weapon.item_type,item.weapon.tier) for item in inventory if end_day-item.purchase_day>=30)
     analytics["top_stale_items"]=stale.most_common(10)
     return analytics
 
@@ -518,9 +518,9 @@ def export_economy_reports(result, output_dir):
     end_day=result["end_day"]
     inventory=[]
     for item in result["sample_trial"]["inventory"]:
-        inventory.append({"item_id":item.item_id,"item_class":item.weapon.item_class,"item_type":item.weapon.item_type,"item_tier":item.weapon.tier,"purchase_day":item.purchase_day,"purchase_week":item.purchase_week,"final_purchase_price":item.final_purchase_price,"purchase_appraised_price":item.purchase_appraised_price,"current_appraised_price":item.current_appraised_price,"shop_listing_price":item.shop_listing_price,"days_in_inventory":item.days_in_inventory(end_day),
+        inventory.append({"item_id":item.item_id,"required_class":item.weapon.required_class,"item_type":item.weapon.item_type,"item_tier":item.weapon.tier,"purchase_day":item.purchase_day,"purchase_week":item.purchase_week,"final_purchase_price":item.final_purchase_price,"purchase_appraised_price":item.purchase_appraised_price,"current_appraised_price":item.current_appraised_price,"shop_listing_price":item.shop_listing_price,"days_in_inventory":item.days_in_inventory(end_day),
                           "player_visible_json":json.dumps(item.known_state.player_view(),ensure_ascii=False) if item.known_state else None})
-    export_rows(inventory,output_dir/"inventory_snapshot.csv",fieldnames=["item_id","item_class","item_type","item_tier",
+    export_rows(inventory,output_dir/"inventory_snapshot.csv",fieldnames=["item_id","required_class","item_type","item_tier",
         "purchase_day","purchase_week","final_purchase_price","purchase_appraised_price","current_appraised_price",
         "shop_listing_price","days_in_inventory","player_visible_json"])
     summary={key:result[key] for key in ("checkpoints","trials","seed","end_day","first_expansion_day_mean",

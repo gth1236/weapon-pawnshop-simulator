@@ -13,16 +13,16 @@ def run_simulation(config, count: int, seed: int):
         raise ValueError("count must be at least 1")
     rng = random.Random(seed)
     records = []
-    power_states = list(config["price"]["market_power_values"])
+    power_states = list(config["price"]["market_balance_values"])
     popularity_states = list(config["price"]["market_popularity_values"])
     # One market snapshot per run, matching a single in-game week.
     market = {name: (rng.choice(power_states), rng.choice(popularity_states)) for name in config["guest"]["classes"]}
     for number in range(1, count + 1):
         guest = generate_guest(rng, config)
         weapon, known = generate_weapon(rng, config, guest, market)
-        class_power, class_popularity = market[weapon.item_class]
-        price = calculate_price(config, guest, weapon, class_power, class_popularity)
-        records.append(SimulationRecord(number, guest, weapon, known, class_power, class_popularity, price))
+        class_balance, class_popularity = market[weapon.required_class]
+        price = calculate_price(config, guest, weapon, class_balance, class_popularity)
+        records.append(SimulationRecord(number, guest, weapon, known, class_balance, class_popularity, price))
     return records
 
 

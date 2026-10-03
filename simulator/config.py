@@ -30,10 +30,10 @@ def validate_weights(weights: dict[str, float], name: str) -> None:
 def validate_config(config: dict[str, Any]) -> None:
     guest = config["guest"]
     weapon = config["weapon"]
-    for group in ["tier_by_level", "stat_grade_by_power", "unique_by_tendency", "reinforce_by_tendency", "refining_band_by_achievement", "amplification_count_by_title"]:
+    for group in ["tier_by_adventurer_level", "stat_grade_by_adventurer_power", "unique_by_equipment_tendency", "reinforce_by_equipment_tendency", "refining_band_by_achievement_rank", "amplification_count_by_title_rank"]:
         for key, table in guest[group].items():
             validate_weights(table, f"guest.{group}.{key}")
-    for name in ["compatibility_weights", "foreign_mode_weights", "foreign_raw_normal_stat_weights", "foreign_raw_high_stat_weights", "foreign_raw_unique_weights", "special_stat_weights", "amplification_quality_weights"]:
+    for name in ["compatibility_weights", "foreign_mode_weights", "foreign_raw_normal_stat_weights", "foreign_raw_high_stat_weights", "foreign_raw_unique_weights", "amplification_quality_weights"]:
         validate_weights(weapon[name], f"weapon.{name}")
     for key, table in weapon["stability_by_processing_load"].items():
         validate_weights(table, f"weapon.stability_by_processing_load.{key}")

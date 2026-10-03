@@ -77,8 +77,8 @@ func continue_day() -> void:
 func refresh() -> void:
 	var s = day.state
 	hud.text = "%d일차 · 손님 %d / 8\n보유 자금  %s\n평판 %.2f · 재고 %d / %d" % [s.day, day.guest_number, UIFactory.money(s.cash), s.reputation, s.inventory.size(), s.capacity]
-	customer.text = "전당포 주인" if day.guest.is_empty() else "%s · %s · %d레벨" % [day.guest.name, TextCatalog.CLASSES[day.guest.guest_class], day.guest.level]
-	portrait_label.text = "손님을 기다리는 중" if day.phase in ["BETWEEN", "COMPLETE"] else "%s\n\n%s 손님" % [TextCatalog.CLASSES[day.guest.guest_class], "무기를 파는" if day.phase == "SELLER" else "무기를 사는"]
+	customer.text = "전당포 주인" if day.guest.is_empty() else "%s · %s · %d레벨" % [day.guest.name, TextCatalog.CLASSES[day.guest.adventurer_class], day.guest.adventurer_level]
+	portrait_label.text = "손님을 기다리는 중" if day.phase in ["BETWEEN", "COMPLETE"] else "%s\n\n%s 손님" % [TextCatalog.CLASSES[day.guest.adventurer_class], "무기를 파는" if day.phase == "SELLER" else "무기를 사는"]
 	dialogue.text = day.message
 	table_button.disabled = day.phase != "SELLER"
 	appraisal_button.disabled = day.phase != "SELLER"

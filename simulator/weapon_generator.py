@@ -48,18 +48,18 @@ def _stat_lines(rng, cfg, target_class, tier, normal_grade, high_grade, unique_g
 
 def generate_weapon(rng, config, guest, market_state):
     guest_cfg, cfg, numeric = config["guest"], config["weapon"], config["numeric_stats"]
-    compatible = weighted_choice(rng, cfg["compatibility_weights"]) == "compatible"
+    seller_class_compatible = weighted_choice(rng, cfg["compatibility_weights"]) == "seller_class_compatible"
     all_types = {weapon for pool in cfg["class_weapon_pools"].values() for weapon in pool}
-    if compatible:
+    if seller_class_compatible:
         generation_mode = "OWN_CLASS"
-        item_type, item_class = rng.choice(cfg["class_weapon_pools"][guest.guest_class]), guest.guest_class
+        item_type, required_class = rng.choice(cfg["class_weapon_pools"][guest.adventurer_class]), guest.adventurer_class
     else:
         generation_mode = weighted_choice(rng, cfg["foreign_mode_weights"])
-        item_type = rng.choice(sorted(all_types - set(cfg["class_weapon_pools"][guest.guest_class])))
-        item_class = rng.choice([name for name, pool in cfg["class_weapon_pools"].items() if item_type in pool])
+        item_type = rng.choice(sorted(all_types - set(cfg["class_weapon_pools"][guest.adventurer_class])))
+        required_class = rng.choice([name for name, pool in cfg["class_weapon_pools"].items() if item_type in pool])
 
-    bracket = next(key for key in guest_cfg["tier_by_level"] if int(key.split("-")[0]) <= guest.level <= int(key.split("-")[1]))
-    tier = int(weighted_choice(rng, guest_cfg["tier_by_level"][bracket]))
+    bracket = next(key for key in guest_cfg["tier_by_adventurer_level"] if int(key.split("-")[0]) <= guest.adventurer_level <= int(key.split("-")[1]))
+    tier = int(weighted_choice(rng, guest_cfg["tier_by_adventurer_level"][bracket]))
     if generation_mode == "FOREIGN_RAW":
         normal_grade = weighted_choice(rng, cfg["foreign_raw_normal_stat_weights"])
         high_grade = weighted_choice(rng, cfg["foreign_raw_high_stat_weights"])
@@ -67,14 +67,14 @@ def generate_weapon(rng, config, guest, market_state):
         reinforce, refining, amp_count, amplification = "UNENHANCED", 0, "UNAPPLIED", "UNAPPLIED"
         amp_lines = []
     else:
-        normal_grade = weighted_choice(rng, guest_cfg["stat_grade_by_power"][guest.power])
-        high_roll = weighted_choice(rng, guest_cfg["stat_grade_by_power"][guest.power])
+        normal_grade = weighted_choice(rng, guest_cfg["stat_grade_by_adventurer_power"][guest.adventurer_power])
+        high_roll = weighted_choice(rng, guest_cfg["stat_grade_by_adventurer_power"][guest.adventurer_power])
         high_grade = {"MIXED": "LOW"}.get(high_roll, high_roll)
-        unique = weighted_choice(rng, guest_cfg["unique_by_tendency"][guest.tendency])
-        reinforce = weighted_choice(rng, guest_cfg["reinforce_by_tendency"][guest.tendency])
-        band = weighted_choice(rng, guest_cfg["refining_band_by_achievement"][guest.achievement])
+        unique = weighted_choice(rng, guest_cfg["unique_by_equipment_tendency"][guest.equipment_tendency])
+        reinforce = weighted_choice(rng, guest_cfg["reinforce_by_equipment_tendency"][guest.equipment_tendency])
+        band = weighted_choice(rng, guest_cfg["refining_band_by_achievement_rank"][guest.achievement_rank])
         refining = rng.randint(*map(int, band.split("-")))
-        amp_count = weighted_choice(rng, guest_cfg["amplification_count_by_title"][guest.title])
+        amp_count = weighted_choice(rng, guest_cfg["amplification_count_by_title_rank"][guest.title_rank])
         quality = weighted_choice(rng, cfg["amplification_quality_weights"])
         amplification = amp_count if amp_count in ("UNAPPLIED", "ZERO_LINE") else f"{amp_count}_{quality}"
         amp_lines = []
@@ -83,23 +83,19 @@ def generate_weapon(rng, config, guest, market_state):
             stat_id = rng.choice(numeric["normal_stat_ids"])
             low, high = numeric["amplification_ranges"][quality]
             value = round(numeric["normal_reference"][str(tier)] * rng.uniform(low, high))
-            amp_lines.append(StatLine(stat_id, "AMPLIFICATION", quality, value, "FLAT", stat_id == numeric["class_profiles"][item_class][0]))
+            amp_lines.append(StatLine(stat_id, "AMPLIFICATION", quality, value, "FLAT", stat_id == numeric["class_profiles"][required_class][0]))
 
     load_cfg = cfg["processing_load"]
     processing_load = (load_cfg["reinforcement"][reinforce] + refining * load_cfg["refining_level_multiplier"] + load_cfg["amplification"][amp_count])
-    class_power, class_popularity = market_state[item_class]
-    market_load = cfg["market_processing_load"]
-    popularity_load = market_load["class_popularity"][class_popularity]
-    class_power_load = market_load["class_power"][class_power]
-    effective_processing_load = processing_load + popularity_load + class_power_load
+    effective_processing_load = processing_load
     stability_table = _table_for_value(cfg["stability_by_processing_load"], effective_processing_load)
     stability_range = weighted_choice(rng, stability_table)
     stability = rng.randint(*map(int, stability_range.split("-")))
     weapon = WeaponTrueState(
-        item_type, item_class, compatible, generation_mode, tier, normal_grade, high_grade,
-        weighted_choice(rng, cfg["special_stat_weights"]), unique, reinforce, refining,
-        amplification, processing_load, popularity_load, class_power_load, effective_processing_load,
+        item_type, required_class, seller_class_compatible, generation_mode, tier, normal_grade, high_grade,
+        unique, reinforce, refining,
+        amplification, processing_load, effective_processing_load,
         stability, _bracket(stability),
-        tuple(_stat_lines(rng, numeric, item_class, tier, normal_grade, high_grade, unique)), tuple(amp_lines),
+        tuple(_stat_lines(rng, numeric, required_class, tier, normal_grade, high_grade, unique)), tuple(amp_lines),
     )
     return weapon, create_player_knowledge(config, weapon, isolated_appraisal_rng(rng))

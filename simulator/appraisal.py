@@ -9,7 +9,6 @@ PROPERTY_FIELDS = {
     "refining": "refining_level",
     "amplification": "amplification_grade",
     "stability": "stability",
-    "special_property": "special_stat_grade",
     "unique_property": "unique_stat_grade",
 }
 
@@ -17,7 +16,7 @@ PROPERTY_FIELDS = {
 def property_domain(config, name):
     """Use the existing price/generation domains; never invent an enum or level."""
     tables = {"reinforcement": "reinforce_values", "amplification": "amplification_values",
-              "special_property": "special_values", "unique_property": "unique_values"}
+              "unique_property": "unique_values"}
     if name in tables:
         return tuple(config["price"][tables[name]])
     if name == "refining":

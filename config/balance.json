@@ -2,7 +2,6 @@
   "metadata": {
     "authoritative_spec": "rpg_weapon_pawnshop_core_system_spec_v0_2.txt",
     "temporary_values": [
-      "weapon.special_stat_weights",
       "weapon.amplification_quality_weights",
       "weapon.processing_load",
       "weapon.stability_by_processing_load",
@@ -12,7 +11,6 @@
       "reputation.positive_decay",
       "weapon.foreign_mode_weights",
       "weapon.foreign_raw_*",
-      "weapon.market_processing_load",
       "economy.visitor_roles",
       "economy.buyer_fit",
       "economy.interest_bands",
@@ -39,7 +37,7 @@
       "SLIGHTLY_CAUTIOUS",
       "VERY_CAUTIOUS"
     ],
-    "knowledge": [
+    "market_knowledge": [
       "NONE",
       "SOME",
       "HIGH"
@@ -49,7 +47,7 @@
       "UPGRADE_PURCHASE",
       "GREEDY_SELLING"
     ],
-    "tier_by_level": {
+    "tier_by_adventurer_level": {
       "1-10": {
         "1": 0.8,
         "2": 0.2
@@ -79,12 +77,12 @@
         "5": 0.4
       }
     },
-    "stat_grade_by_power": {
+    "stat_grade_by_adventurer_power": {
       "VERY_LOW": {
         "NONE": 0.3,
         "MIXED": 0.5,
         "ADEQUATE": 0.2,
-        "EXCELLENT": 0.0
+        "EXCELLENT": 0
       },
       "LOW": {
         "NONE": 0.1,
@@ -93,29 +91,29 @@
         "EXCELLENT": 0.1
       },
       "NORMAL": {
-        "NONE": 0.0,
+        "NONE": 0,
         "MIXED": 0.3,
         "ADEQUATE": 0.5,
         "EXCELLENT": 0.2
       },
       "HIGH": {
-        "NONE": 0.0,
+        "NONE": 0,
         "MIXED": 0.1,
         "ADEQUATE": 0.4,
         "EXCELLENT": 0.5
       },
       "VERY_HIGH": {
-        "NONE": 0.0,
-        "MIXED": 0.0,
+        "NONE": 0,
+        "MIXED": 0,
         "ADEQUATE": 0.2,
         "EXCELLENT": 0.8
       }
     },
-    "unique_by_tendency": {
+    "unique_by_equipment_tendency": {
       "VERY_CARELESS": {
         "NONE": 0.6,
         "LOW": 0.4,
-        "HIGH": 0.0
+        "HIGH": 0
       },
       "SLIGHTLY_CARELESS": {
         "NONE": 0.4,
@@ -128,12 +126,12 @@
         "HIGH": 0.4
       },
       "VERY_CAUTIOUS": {
-        "NONE": 0.0,
+        "NONE": 0,
         "LOW": 0.4,
         "HIGH": 0.6
       }
     },
-    "reinforce_by_tendency": {
+    "reinforce_by_equipment_tendency": {
       "VERY_CARELESS": {
         "PERFECT": 0.1,
         "GOOD": 0.3,
@@ -150,20 +148,20 @@
         "PERFECT": 0.3,
         "GOOD": 0.5,
         "MIXED": 0.2,
-        "BAD": 0.0
+        "BAD": 0
       },
       "VERY_CAUTIOUS": {
         "PERFECT": 0.6,
         "GOOD": 0.4,
-        "MIXED": 0.0,
-        "BAD": 0.0
+        "MIXED": 0,
+        "BAD": 0
       }
     },
-    "refining_band_by_achievement": {
+    "refining_band_by_achievement_rank": {
       "NONE": {
         "1-4": 0.8,
         "5-7": 0.2,
-        "8-10": 0.0
+        "8-10": 0
       },
       "SOME": {
         "1-4": 0.6,
@@ -181,20 +179,20 @@
         "8-10": 0.2
       }
     },
-    "amplification_count_by_title": {
+    "amplification_count_by_title_rank": {
       "NONE": {
         "UNAPPLIED": 0.4,
         "ZERO_LINE": 0.4,
         "ONE_LINE": 0.2,
-        "TWO_LINE": 0.0,
-        "THREE_LINE": 0.0
+        "TWO_LINE": 0,
+        "THREE_LINE": 0
       },
       "C": {
         "UNAPPLIED": 0.2,
         "ZERO_LINE": 0.4,
         "ONE_LINE": 0.3,
         "TWO_LINE": 0.1,
-        "THREE_LINE": 0.0
+        "THREE_LINE": 0
       },
       "B": {
         "UNAPPLIED": 0.2,
@@ -205,15 +203,15 @@
       },
       "A": {
         "UNAPPLIED": 0.1,
-        "ZERO_LINE": 0.0,
+        "ZERO_LINE": 0,
         "ONE_LINE": 0.3,
         "TWO_LINE": 0.4,
         "THREE_LINE": 0.2
       },
       "S": {
-        "UNAPPLIED": 0.0,
-        "ZERO_LINE": 0.0,
-        "ONE_LINE": 0.0,
+        "UNAPPLIED": 0,
+        "ZERO_LINE": 0,
+        "ONE_LINE": 0,
         "TWO_LINE": 0.4,
         "THREE_LINE": 0.6
       }
@@ -221,7 +219,7 @@
   },
   "weapon": {
     "compatibility_weights": {
-      "compatible": 0.8,
+      "seller_class_compatible": 0.8,
       "incompatible": 0.2
     },
     "class_weapon_pools": {
@@ -254,11 +252,6 @@
         "mace"
       ]
     },
-    "special_stat_weights": {
-      "HIGH_RELEVANT": 0.2,
-      "RELEVANT": 0.4,
-      "NONE_RELEVANT": 0.4
-    },
     "amplification_quality_weights": {
       "LOW": 0.5,
       "HIGH": 0.5
@@ -282,15 +275,15 @@
     },
     "stability_by_processing_load": {
       "0-4": {
-        "0-19": 0.0,
-        "20-39": 0.0,
+        "0-19": 0,
+        "20-39": 0,
         "40-59": 0.05,
         "60-79": 0.15,
         "80-99": 0.4,
         "100-100": 0.4
       },
       "5-8": {
-        "0-19": 0.0,
+        "0-19": 0,
         "20-39": 0.05,
         "40-59": 0.15,
         "60-79": 0.4,
@@ -303,21 +296,13 @@
         "40-59": 0.35,
         "60-79": 0.3,
         "80-99": 0.15,
-        "100-100": 0.0
+        "100-100": 0
       },
       "13-17": {
         "0-19": 0.2,
         "20-39": 0.35,
         "40-59": 0.3,
         "60-79": 0.15,
-        "80-99": 0.0,
-        "100-100": 0.0
-      },
-      "18-20": {
-        "0-19": 0.35,
-        "20-39": 0.4,
-        "40-59": 0.2,
-        "60-79": 0.05,
         "80-99": 0,
         "100-100": 0
       }
@@ -342,18 +327,6 @@
       "NONE": 0.8,
       "LOW": 0.18,
       "HIGH": 0.02
-    },
-    "market_processing_load": {
-      "class_popularity": {
-        "POPULAR": 2,
-        "NORMAL": 1,
-        "UNPOPULAR": 0
-      },
-      "class_power": {
-        "STRONG": 1,
-        "NORMAL": 0,
-        "WEAK": 0
-      }
     }
   },
   "numeric_stats": {
@@ -408,7 +381,7 @@
         0.9
       ],
       "EXCELLENT": [
-        1.0,
+        1,
         1.2
       ]
     },
@@ -422,7 +395,7 @@
         0.9
       ],
       "EXCELLENT": [
-        1.0,
+        1,
         1.2
       ]
     },
@@ -436,42 +409,42 @@
     "unique_ranges": {
       "critical_chance": {
         "LOW": [
-          2.0,
-          5.0
+          2,
+          5
         ],
         "HIGH": [
-          6.0,
-          10.0
+          6,
+          10
         ]
       },
       "critical_damage": {
         "LOW": [
-          5.0,
-          12.0
+          5,
+          12
         ],
         "HIGH": [
-          13.0,
-          25.0
+          13,
+          25
         ]
       },
       "armor_penetration": {
         "LOW": [
-          3.0,
-          8.0
+          3,
+          8
         ],
         "HIGH": [
-          9.0,
-          18.0
+          9,
+          18
         ]
       },
       "element_damage": {
         "LOW": [
-          4.0,
-          10.0
+          4,
+          10
         ],
         "HIGH": [
-          11.0,
-          22.0
+          11,
+          22
         ]
       }
     },
@@ -544,7 +517,7 @@
           "result": "DISSATISFIED"
         },
         {
-          "max": 1.0,
+          "max": 1,
           "inclusive": true,
           "result": "SATISFIED"
         },
@@ -561,7 +534,7 @@
       "DISSATISFIED": -4,
       "HUMILIATED": -8
     },
-    "kindness_deltas": {
+    "trade_attitude_deltas": {
       "GENEROUS": 2,
       "NORMAL": 0,
       "ARGUMENTATIVE": 0,
@@ -572,7 +545,7 @@
       "-2": 0.5
     },
     "failed_scam_delta": -5,
-    "non_humiliating_kindness": [
+    "non_humiliating_trade_attitude": [
       "GENEROUS",
       "NORMAL"
     ],
@@ -582,7 +555,7 @@
         {
           "minimum": 0,
           "maximum": 99,
-          "multiplier": 1.0
+          "multiplier": 1
         },
         {
           "minimum": 100,
@@ -629,7 +602,7 @@
       "NONE": 0.3
     },
     "high_values": {
-      "EXCELLENT": 1.0,
+      "EXCELLENT": 1,
       "ADEQUATE": 0.4,
       "LOW": 0.1,
       "NONE": -0.8
@@ -640,15 +613,10 @@
       "LOW": 0.55,
       "NONE": 0.2
     },
-    "special_values": {
-      "HIGH_RELEVANT": 0.3,
-      "RELEVANT": 0.1,
-      "NONE_RELEVANT": -0.1
-    },
     "unique_values": {
       "HIGH": 0.5,
       "LOW": 0.3,
-      "NONE": 0.0
+      "NONE": 0
     },
     "reinforce_values": {
       "PERFECT": 0.8,
@@ -658,7 +626,7 @@
       "UNENHANCED": 0.1
     },
     "refining_values": {
-      "0": 0.0,
+      "0": 0,
       "1": 0.05,
       "2": 0.1,
       "3": 0.15,
@@ -667,54 +635,54 @@
       "6": 0.8,
       "7": 1.1,
       "8": 1.5,
-      "9": 2.0,
-      "10": 3.0
+      "9": 2,
+      "10": 3
     },
     "amplification_values": {
       "UNAPPLIED": 0.2,
       "ZERO_LINE": -0.5,
       "ONE_LINE_LOW": -0.4,
       "ONE_LINE_HIGH": -0.2,
-      "TWO_LINE_LOW": 0.0,
+      "TWO_LINE_LOW": 0,
       "TWO_LINE_HIGH": 0.2,
       "THREE_LINE_LOW": 0.4,
-      "THREE_LINE_HIGH": 1.0
+      "THREE_LINE_HIGH": 1
     },
-    "market_power_values": {
-      "STRONG": 0.15,
-      "NORMAL": 0.05,
-      "WEAK": -0.1
+    "market_balance_values": {
+      "STRONG": 0.2,
+      "NORMAL": 0,
+      "WEAK": -0.2
     },
     "market_popularity_values": {
       "POPULAR": 0.2,
-      "NORMAL": 0.05,
+      "NORMAL": 0,
       "UNPOPULAR": -0.2
     },
     "stability_multipliers": {
       "below_2": {
-        "100": 1.5,
-        "80": 1.3,
-        "60": 1.0,
-        "40": 0.8,
+        "0": 0.4,
         "20": 0.6,
-        "0": 0.4
+        "40": 0.8,
+        "60": 1,
+        "80": 1.3,
+        "100": 1.5
       },
       "at_least_2": {
-        "100": 2.0,
-        "80": 1.6,
-        "60": 1.2,
-        "40": 1.0,
+        "0": 0.6,
         "20": 0.9,
-        "0": 0.6
+        "40": 1,
+        "60": 1.2,
+        "80": 1.6,
+        "100": 2
       }
     },
-    "purpose_multipliers": {
+    "selling_purpose_multipliers": {
       "EMERGENCY_CASH": 0.5,
       "UPGRADE_PURCHASE": 0.8,
-      "GREEDY_SELLING": 1.0
+      "GREEDY_SELLING": 1
     },
-    "knowledge_multipliers": {
-      "NONE": 1.0,
+    "market_knowledge_multipliers": {
+      "NONE": 1,
       "SOME": 1.1,
       "HIGH": 1.2
     },
@@ -724,7 +692,7 @@
   "progression": {
     "temporary": true,
     "reputation": {
-      "guest_kindness": {
+      "trade_attitude": {
         "anchors": [
           {
             "value": 0,
@@ -778,7 +746,7 @@
           }
         ]
       },
-      "guest_level": {
+      "adventurer_level": {
         "anchors": [
           {
             "value": 0,
@@ -837,7 +805,7 @@
           }
         ]
       },
-      "guest_power": {
+      "adventurer_power": {
         "anchors": [
           {
             "value": 0,
@@ -893,7 +861,7 @@
       }
     },
     "trade_count": {
-      "guest_title": {
+      "title_rank": {
         "anchors": [
           {
             "value": 0,
@@ -957,7 +925,7 @@
           }
         ]
       },
-      "guest_achievement": {
+      "achievement_rank": {
         "anchors": [
           {
             "value": 0,
@@ -1044,7 +1012,6 @@
       "refining": "refining_tool",
       "amplification": "amplification_tool",
       "stability": "stability_tool",
-      "special_property": "special_property_tool",
       "unique_property": "unique_property_tool"
     }
   },
@@ -1071,15 +1038,30 @@
       "negative_cash": "SIMULATION ONLY; decide Godot insufficient-cash behavior after playtesting",
       "debt_repayment": "HISTORICAL EXPERIMENT ONLY: disabled in current game rules"
     },
-    "weekly_operating_cost": {"first_week": 2000, "weekly_increase": 2000},
+    "weekly_operating_cost": {
+      "first_week": 2000,
+      "weekly_increase": 2000
+    },
     "debt_repayment": {
       "enabled": false,
       "mandatory_weekly_payment": 5000,
       "default_policy": "mandatory_only",
       "policies": {
-        "mandatory_only": {"name": "MANDATORY_ONLY", "reserve_threshold": 0, "excess_repayment_fraction": 0},
-        "moderate": {"name": "MODERATE_EARLY_REPAYMENT", "reserve_threshold": 50000, "excess_repayment_fraction": 0.5},
-        "aggressive": {"name": "AGGRESSIVE_EARLY_REPAYMENT", "reserve_threshold": 30000, "excess_repayment_fraction": 1}
+        "mandatory_only": {
+          "name": "MANDATORY_ONLY",
+          "reserve_threshold": 0,
+          "excess_repayment_fraction": 0
+        },
+        "moderate": {
+          "name": "MODERATE_EARLY_REPAYMENT",
+          "reserve_threshold": 50000,
+          "excess_repayment_fraction": 0.5
+        },
+        "aggressive": {
+          "name": "AGGRESSIVE_EARLY_REPAYMENT",
+          "reserve_threshold": 30000,
+          "excess_repayment_fraction": 1
+        }
       }
     },
     "daily_visitors": {
@@ -1088,8 +1070,8 @@
     },
     "forced_initial_seller_visits": 4,
     "visitor_roles": {
-      "SELL_TO_SHOP": 0.5,
-      "BUY_FROM_SHOP": 0.5
+      "SELL_TO_SHOP": 0.55,
+      "BUY_FROM_SHOP": 0.45
     },
     "checkpoints": [
       1,
@@ -1177,11 +1159,11 @@
         "name": "LOW_INTEREST",
         "minimum": 40,
         "haggles": 3,
-        "price_multiplier": 1.0,
+        "price_multiplier": 1,
         "desired_discount": 0.15
       }
     ],
-    "knowledge_price_adjustment": {
+    "market_knowledge_price_adjustment": {
       "NONE": 0.05,
       "SOME": 0,
       "HIGH": -0.05

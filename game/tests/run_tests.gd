@@ -42,7 +42,7 @@ func run() -> void:
 		check(not AppraisalService.reveal(c, weapon, property, []), "Missing tool cannot reveal")
 		check(AppraisalService.reveal(c, weapon, property, c.appraisal.property_tools.values()), "Reveal succeeds")
 		check(weapon.known.properties[property].known_exact_value == weapon.truth.values[AppraisalService.FIELDS[property]], "Exact reveal")
-		check(judgement.entries[property].grade == -1 and not judgement.entries[property].included, "Reveal never judges or includes")
+		check(judgement.entries[property].selected_value_tier == -1 and not judgement.entries[property].included, "Reveal never judges or includes")
 	check(weapon.truth.values.is_read_only(), "True state is immutable")
 	var visible = weapon.known.player_view()
 	var base = int(c.price.base_prices[str(weapon.known.tier)])

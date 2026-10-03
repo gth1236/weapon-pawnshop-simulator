@@ -5,15 +5,15 @@ import json
 
 @dataclass(frozen=True)
 class Guest:
-    kindness: str
-    guest_class: str
-    level: int
-    power: str
-    tendency: str
-    achievement: str
-    title: str
-    knowledge: str
-    purpose: str
+    trade_attitude: str
+    adventurer_class: str
+    adventurer_level: int
+    adventurer_power: str
+    equipment_tendency: str
+    achievement_rank: str
+    title_rank: str
+    market_knowledge: str
+    selling_purpose: str
     role: str = "SELL_TO_SHOP"
     preferred_weapon_type: str | None = None
 
@@ -50,7 +50,6 @@ class WeaponKnownState:
     refining: KnownField = field(default_factory=KnownField)
     amplification: KnownField = field(default_factory=KnownField)
     stability: KnownField = field(default_factory=KnownField)
-    special_property: KnownField = field(default_factory=KnownField)
     unique_property: KnownField = field(default_factory=KnownField)
 
     def player_view(self):
@@ -59,27 +58,24 @@ class WeaponKnownState:
             "tier": self.item_tier.player_view(),
             "concrete_stats": [line.player_view() for line in self.known_stat_lines.values()],
             "properties": {name: getattr(self, name).player_view() for name in (
-                "reinforcement", "refining", "amplification", "stability", "special_property", "unique_property")},
+                "reinforcement", "refining", "amplification", "stability", "unique_property")},
         }
 
 
 @dataclass(frozen=True)
 class WeaponTrueState:
     item_type: str
-    item_class: str
-    compatible: bool
+    required_class: str  # Market/stat origin, not an exclusive buyer restriction.
+    seller_class_compatible: bool
     generation_mode: str
     tier: int
     normal_stat_grade: str
     high_stat_grade: str
-    special_stat_grade: str
     unique_stat_grade: str
     reinforcement_grade: str
     refining_level: int
     amplification_grade: str
     processing_load: int
-    popularity_load: int
-    class_power_load: int
     effective_processing_load: int
     stability: int
     stability_bracket: str
@@ -89,7 +85,7 @@ class WeaponTrueState:
     @property
     def target_class(self) -> str:
         """Backward-compatible alias for the specification's older name."""
-        return self.item_class
+        return self.required_class
 
 
 @dataclass(frozen=True)
@@ -112,7 +108,7 @@ class SimulationRecord:
     guest: Guest
     weapon: WeaponTrueState
     known_state: WeaponKnownState
-    class_power: str
+    class_balance: str
     class_popularity: str
     price: PriceResult
 
@@ -132,7 +128,7 @@ class SimulationRecord:
             "known_stability_state": self.known_state.stability.knowledge_state,
             "player_visible_json": json.dumps(self.known_state.player_view(), ensure_ascii=False),
         })
-        row.update({"class_power": self.class_power, "class_popularity": self.class_popularity})
+        row.update({"class_balance": self.class_balance, "class_popularity": self.class_popularity})
         row.update({f"price_{k}": v for k, v in asdict(self.price).items()})
         return row
 

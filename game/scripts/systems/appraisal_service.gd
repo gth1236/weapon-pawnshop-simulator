@@ -25,7 +25,7 @@ static func create_knowledge(config: Dictionary, truth: WeaponTrueState, rng: Ra
 	var known = WeaponKnownState.new()
 	var w = truth.values
 	known.item_type = w.item_type
-	known.item_class = w.item_class
+	known.required_class = w.required_class
 	known.tier = int(w.tier)
 	for group in ["stat_lines", "amplification_lines"]:
 		for source in w[group]:

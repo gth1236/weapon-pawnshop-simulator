@@ -10,28 +10,28 @@ static func cumulative(value: String, probabilities: Dictionary, order: Array) -
 	return clampf(total, 0, 1)
 
 static func calculate(config: Dictionary, buyer: Dictionary, w: Dictionary) -> Dictionary:
-	if buyer.guest_class != w.item_class:
+	if w.item_type not in config.weapon.class_weapon_pools[buyer.adventurer_class]:
 		return {}
 	var cfg = config.economy.buyer_fit
 	var gc = config.guest
 	var orders = cfg.quality_order
-	var tiers = Balance.band_table(gc.tier_by_level, buyer.level)
+	var tiers = Balance.band_table(gc.tier_by_adventurer_level, buyer.adventurer_level)
 	var max_tier = 0.0
 	for probability in tiers.values():
 		max_tier = maxf(max_tier, probability)
-	var stats = gc.stat_grade_by_power[buyer.power]
+	var stats = gc.stat_grade_by_adventurer_power[buyer.adventurer_power]
 	var high = {}
 	for key in stats:
 		high["LOW" if key == "MIXED" else key] = stats[key]
-	var reinforcement = gc.reinforce_by_tendency[buyer.tendency].duplicate()
+	var reinforcement = gc.reinforce_by_equipment_tendency[buyer.equipment_tendency].duplicate()
 	reinforcement.UNENHANCED = 0.0
 	var refining = cfg.refining_zero_probability
-	for band in gc.refining_band_by_achievement[buyer.achievement]:
+	for band in gc.refining_band_by_achievement_rank[buyer.achievement_rank]:
 		var bounds = band.split("-")
 		for level in range(int(bounds[0]), int(bounds[1]) + 1):
 			if level <= w.refining_level:
-				refining += (1 - cfg.refining_zero_probability) * gc.refining_band_by_achievement[buyer.achievement][band] / (int(bounds[1]) - int(bounds[0]) + 1)
-	var count = gc.amplification_count_by_title[buyer.title]
+				refining += (1 - cfg.refining_zero_probability) * gc.refining_band_by_achievement_rank[buyer.achievement_rank][band] / (int(bounds[1]) - int(bounds[0]) + 1)
+	var count = gc.amplification_count_by_title_rank[buyer.title_rank]
 	var amp = {"UNAPPLIED": count.UNAPPLIED, "ZERO_LINE": count.ZERO_LINE}
 	for prefix in ["ONE_LINE", "TWO_LINE", "THREE_LINE"]:
 		for grade in ["LOW", "HIGH"]:
@@ -44,7 +44,7 @@ static func calculate(config: Dictionary, buyer: Dictionary, w: Dictionary) -> D
 		"reinforcement": cumulative(w.reinforcement_grade, reinforcement, orders.reinforcement),
 		"refining": refining,
 		"amplification": cumulative(w.amplification_grade, amp, orders.amplification),
-		"unique_stat": cumulative(w.unique_stat_grade, gc.unique_by_tendency[buyer.tendency], orders.unique_stat)}
+		"unique_stat": cumulative(w.unique_stat_grade, gc.unique_by_equipment_tendency[buyer.equipment_tendency], orders.unique_stat)}
 	var score = 0.0
 	for key in components:
 		score += cfg.weights[key] * components[key]

@@ -26,10 +26,10 @@ func click_button(button: Button) -> void:
 	event.position = button.get_global_rect().get_center()
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = true
-	root.push_input(event)
+	root.push_input(event, true)
 	event = event.duplicate()
 	event.pressed = false
-	root.push_input(event)
+	root.push_input(event, true)
 	await process_frame
 
 func audit_ui(node: Node) -> void:
@@ -57,7 +57,10 @@ func run() -> void:
 	await click_button(scene.appraisal_button)
 	var detail = scene.detail
 	check(detail.visible and detail.item != null, "Dedicated appraisal view")
-	check(not detail.row_buttons.has("special_property") and not detail.toggles.has("market"), "Special/market UI absent")
+	if not detail.visible or detail.item == null:
+		quit(1)
+		return
+	check(not detail.row_buttons.has("special_property") and detail.toggles.has("class_popularity") and detail.toggles.has("class_balance"), "Retired field absent and market judgements present")
 	var before = detail.estimate_label.text
 	var actual = PriceCalculator.calculate(scene.day.config, detail.item, scene.day.market).true_appraised_price
 	await capture("appraisal_before")
@@ -68,11 +71,11 @@ func run() -> void:
 			check(detail.grade_buttons[0].disabled, "Unrevealed judgement disabled")
 			await create_timer(0.36).timeout
 			check(detail.item.known.properties[section].knowledge_state == "EXACT", "Exact reveal")
-		check(detail.item.judgement.entries[section].grade == -1, "No auto judgement")
+		check(detail.item.judgement.entries[section].selected_value_tier == -1, "No auto judgement")
 		check(not detail.toggles[section].button_pressed, "No auto include")
 		var reveal_estimate = detail.estimate_label.text
 		detail.grade_buttons.back().pressed.emit()
-		check(detail.item.judgement.entries[section].grade == PlayerJudgement.option_count(section) - 1, "Grade chosen")
+		check(detail.item.judgement.entries[section].selected_value_tier == PlayerJudgement.option_count(section) - 1, "Grade chosen")
 		check(detail.estimate_label.text == reveal_estimate, "Grade alone does not include")
 		detail.toggles[section].button_pressed = true
 		check(detail.item.judgement.entries[section].included, "Include selected")

@@ -22,19 +22,19 @@ def _percentile(sorted_values, percent):
 
 def build_report(records):
     categories = {
-        "guest_kindness": [x.guest.kindness for x in records], "guest_class": [x.guest.guest_class for x in records],
-        "guest_level": [x.guest.level for x in records], "guest_power": [x.guest.power for x in records],
-        "guest_tendency": [x.guest.tendency for x in records], "guest_achievement": [x.guest.achievement for x in records],
-        "guest_title": [x.guest.title for x in records], "guest_knowledge": [x.guest.knowledge for x in records],
-        "guest_purpose": [x.guest.purpose for x in records], "item_type": [x.weapon.item_type for x in records],
-        "item_compatible": [x.weapon.compatible for x in records], "item_tier": [x.weapon.tier for x in records],
-        "generation_mode": [x.weapon.generation_mode for x in records], "item_class": [x.weapon.item_class for x in records],
+        "trade_attitude": [x.guest.trade_attitude for x in records], "adventurer_class": [x.guest.adventurer_class for x in records],
+        "adventurer_level": [x.guest.adventurer_level for x in records], "adventurer_power": [x.guest.adventurer_power for x in records],
+        "equipment_tendency": [x.guest.equipment_tendency for x in records], "achievement_rank": [x.guest.achievement_rank for x in records],
+        "title_rank": [x.guest.title_rank for x in records], "market_knowledge": [x.guest.market_knowledge for x in records],
+        "selling_purpose": [x.guest.selling_purpose for x in records], "item_type": [x.weapon.item_type for x in records],
+        "item_compatible": [x.weapon.seller_class_compatible for x in records], "item_tier": [x.weapon.tier for x in records],
+        "generation_mode": [x.weapon.generation_mode for x in records], "required_class": [x.weapon.required_class for x in records],
         "normal_stat_grade": [x.weapon.normal_stat_grade for x in records], "high_stat_grade": [x.weapon.high_stat_grade for x in records],
         "unique_stat_grade": [x.weapon.unique_stat_grade for x in records], "reinforcement_grade": [x.weapon.reinforcement_grade for x in records],
         "refining_level": [x.weapon.refining_level for x in records], "amplification_grade": [x.weapon.amplification_grade for x in records],
         "processing_load": [x.weapon.processing_load for x in records],
         "effective_processing_load": [x.weapon.effective_processing_load for x in records],
-        "stability": [x.weapon.stability for x in records], "class_power": [x.class_power for x in records], "class_popularity": [x.class_popularity for x in records],
+        "stability": [x.weapon.stability for x in records], "class_balance": [x.class_balance for x in records], "class_popularity": [x.class_popularity for x in records],
     }
     output = [f"SIMULATION SUMMARY ({len(records):,} records)"]
     output.extend(_distribution(key, values) for key, values in categories.items())
@@ -79,10 +79,10 @@ def format_samples(records, count=20):
         g, w, p = record.guest, record.weapon, record.price
         stats = "\n".join(f"  {format_stat_line(line)}" for line in (*w.stat_lines, *w.amplification_lines)) or "  (none)"
         blocks.append(f"""Customer #{record.record_id:03d}
-Class: {g.guest_class}\nLevel: {g.level}\nPower: {g.power}\nTendency: {g.tendency}\nAchievement: {g.achievement}\nTitle: {g.title}\nMarket Knowledge: {g.knowledge}\nPurpose: {g.purpose}
-Weapon: Tier {w.tier} {w.item_type}\nItem Class: {w.item_class}\nCompatible: {'Yes' if w.compatible else 'No'}\nGeneration Mode: {w.generation_mode}
+Class: {g.adventurer_class}\nLevel: {g.adventurer_level}\nPower: {g.adventurer_power}\nTendency: {g.equipment_tendency}\nAchievement: {g.achievement_rank}\nTitle: {g.title_rank}\nMarket Knowledge: {g.market_knowledge}\nPurpose: {g.selling_purpose}
+Weapon: Tier {w.tier} {w.item_type}\nItem Class: {w.required_class}\nCompatible: {'Yes' if w.seller_class_compatible else 'No'}\nGeneration Mode: {w.generation_mode}
 True Stats:\n{stats}
-Reinforcement: {w.reinforcement_grade}\nRefining: +{w.refining_level}\nAmplification: {w.amplification_grade}\nProcessing Load: {w.processing_load} + popularity {w.popularity_load} + class power {w.class_power_load} = {w.effective_processing_load}\nStability: {w.stability}%
+Reinforcement: {w.reinforcement_grade}\nRefining: +{w.refining_level}\nAmplification: {w.amplification_grade}\nProcessing Load: {w.processing_load}\nStability: {w.stability}%
 Base Price: {p.base_price:,} G\nAppraised Price: {p.appraised_price:,} G\nCustomer Asking Price: {p.asking_price:,} G
-Internal Grades: Normal={w.normal_stat_grade}, High={w.high_stat_grade}, Special={w.special_stat_grade}, Unique={w.unique_stat_grade}""")
+Internal Grades: Normal={w.normal_stat_grade}, High={w.high_stat_grade}, Unique={w.unique_stat_grade}""")
     return "\n\n".join(blocks)

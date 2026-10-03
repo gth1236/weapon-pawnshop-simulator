@@ -3,7 +3,7 @@ extends RefCounted
 
 static func refuse(config: Dictionary, rng: RandomNumberGenerator, state: ShopState, guest: Dictionary) -> String:
 	state.refused_purchases += 1
-	var raw = config.reputation.failed_scam_delta if guest.kindness == "SCAMMER" else float(Balance.weighted(rng, config.reputation.no_purchase_deltas))
+	var raw = config.reputation.failed_scam_delta if guest.trade_attitude == "SCAMMER" else float(Balance.weighted(rng, config.reputation.no_purchase_deltas))
 	state.reputation += ProgressionService.apply_delta(config, state.reputation, raw)
 	return "매입을 거절했습니다. 손님이 무기를 가지고 떠납니다."
 
@@ -43,7 +43,7 @@ static func buyer(config: Dictionary, rng: RandomNumberGenerator, state: ShopSta
 	item.current_appraised_price = current
 	var listing = Balance.money(current * (1 + c.listing_markup))
 	var band = BuyerFitService.interest(config, fit.score)
-	var ceiling = current * (band.price_multiplier + c.knowledge_price_adjustment[guest.knowledge])
+	var ceiling = current * (band.price_multiplier + c.market_knowledge_price_adjustment[guest.market_knowledge])
 	var offer = Balance.money(minf(listing * (1 - band.desired_discount), ceiling))
 	var minimum = maxf(current, item.final_purchase_price * (1 + c.minimum_profit_over_cost))
 	var details = "적합도 %.1f | 판매가 %d 골드 | 제안 %d 골드 | 흥정 %d회" % [fit.score, listing, offer, band.haggles]

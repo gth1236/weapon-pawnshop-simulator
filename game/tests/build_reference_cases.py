@@ -20,10 +20,7 @@ from simulator.reputation_simulation import completed_trade_reputation_delta
 from simulator.progression import customer_progression_distributions
 
 config = load_config()
-assert (ROOT / "config/balance.json").read_bytes() == (ROOT / "game/data/balance.json").read_bytes()
-# Godot-only slice rule: special property contributes nothing. Apply it to an
-# in-memory reference config only; never edit the source config or simulator.
-config["price"]["special_values"] = {key: 0.0 for key in config["price"]["special_values"]}
+assert json.loads((ROOT / "config/balance.json").read_text()) == json.loads((ROOT / "game/data/balance.json").read_text())
 cases = []
 for index in range(128):
     rng = random.Random(index + 431)
@@ -31,11 +28,11 @@ for index in range(128):
     seller = generate_guest(rng, config, reputation, trades, 1)
     market = roll_market(rng, config)
     weapon, known = generate_weapon(rng, config, seller, market)
-    price = calculate_price(config, seller, weapon, *market[weapon.item_class])
+    price = calculate_price(config, seller, weapon, *market[weapon.required_class])
     buyer_data = asdict(generate_guest(rng, config, reputation, trades, 8))
     # Include incompatible and all quality levels, while giving sales broad coverage.
     if index % 5:
-        buyer_data["guest_class"] = weapon.item_class
+        buyer_data["adventurer_class"] = weapon.required_class
         buyer_data["preferred_weapon_type"] = weapon.item_type
     buyer_data["role"] = "BUY_FROM_SHOP"
     from simulator.models import Guest
@@ -54,4 +51,4 @@ for index in range(128):
                   "progression": customer_progression_distributions(config, reputation, trades), "trades": trades})
 destination = ROOT / "game/tests/reference_cases.json"
 destination.write_text(json.dumps(cases, separators=(",", ":")), encoding="utf-8")
-print(f"Wrote {len(cases)} Python reference cases; runtime config matches source byte-for-byte.")
+print(f"Wrote {len(cases)} Python reference cases; runtime balance values match source.")

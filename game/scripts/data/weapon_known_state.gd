@@ -2,7 +2,7 @@ class_name WeaponKnownState
 extends RefCounted
 
 var item_type = ""
-var item_class = ""
+var required_class = ""
 var tier = 1
 var stat_lines: Array = []
 var amplification_lines: Array = []
@@ -18,6 +18,6 @@ func player_view() -> Dictionary:
 		var entry = properties[key]
 		visible[key] = {"knowledge_state": entry.knowledge_state,
 			"displayed_value": entry.displayed_value if entry.knowledge_state == "EXACT" else null}
-	return {"item_type": item_type, "item_class": item_class, "tier": tier,
+	return {"item_type": item_type, "required_class": required_class, "tier": tier,
 		"stat_lines": stat_lines.duplicate(true), "amplification_lines": amplification_lines.duplicate(true),
 		"properties": visible}

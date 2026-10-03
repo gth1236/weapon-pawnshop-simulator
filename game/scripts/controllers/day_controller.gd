@@ -9,6 +9,7 @@ const DEFAULT_SEED = 12352
 var config: Dictionary
 var state: ShopState
 var market: Dictionary = {}
+var market_knowledge: MarketKnowledge
 var sequence: Array = []
 var guest_number = 0
 var guest: Dictionary = {}
@@ -22,6 +23,7 @@ var rng = RandomNumberGenerator.new()
 func _init(seed_input = DEFAULT_SEED) -> void:
 	config = Balance.load_config()
 	state = ShopState.new(config)
+	market_knowledge = MarketKnowledge.new(config.guest.classes)
 	seed_value = seed_input
 	var arrivals = RandomNumberGenerator.new()
 	arrivals.seed = seed_value
@@ -29,8 +31,8 @@ func _init(seed_input = DEFAULT_SEED) -> void:
 	sequence.append("SELL_TO_SHOP" if arrivals.randf() < 0.5 else "BUY_FROM_SHOP")
 	var market_rng = RandomNumberGenerator.new()
 	market_rng.seed = seed_value ^ 59321
-	for guest_class in config.guest.classes:
-		market[guest_class] = [Balance.pick(market_rng, config.price.market_power_values.keys()), Balance.pick(market_rng, config.price.market_popularity_values.keys())]
+	for adventurer_class in config.guest.classes:
+		market[adventurer_class] = [Balance.pick(market_rng, config.price.market_balance_values.keys()), Balance.pick(market_rng, config.price.market_popularity_values.keys())]
 
 func next_guest() -> void:
 	if phase != "BETWEEN" or guest_number >= GUEST_COUNT:

@@ -3,5 +3,6 @@ tools/godot/
 tools/*.zip
 tests/generated_cases.json
 tests/verification.log
+tests/verification_*.log
 tests/*.png
 tests/*.png.import
